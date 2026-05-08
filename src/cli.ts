@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
 import path from 'path';
-import fs from 'fs';
-import { parseZip } from './parser/zip';
+import { Command } from 'commander';
+import { resolveSource } from './sources';
+import { analyzeProject, printReport } from './analyzer';
 import { logger, setVerbose } from './logger';
 
 const program = new Command();
@@ -13,36 +13,52 @@ program
   .version('0.1.0');
 
 program
-  .command('inspect <zipFile>')
-  .description('Inspect a Lovable.dev exported ZIP file')
-  .option('-v, --verbose', 'Enable verbose output')
-  .action((zipFile: string, options: { verbose?: boolean }) => {
+  .command('inspect <input>')
+  .description('Lista os arquivos de uma fonte (pasta, ZIP ou repositório clonado)')
+  .option('-v, --verbose', 'Habilita saída verbose')
+  .action(async (input: string, options: { verbose?: boolean }) => {
     if (options.verbose) setVerbose(true);
 
-    const resolvedPath = path.resolve(zipFile);
+    try {
+      const source = resolveSource(input);
+      logger.info(`Fonte  : ${source.describe()}`);
 
-    if (!fs.existsSync(resolvedPath)) {
-      logger.error(`File not found: ${resolvedPath}`);
-      process.exit(1);
-    }
+      const files = await source.load();
 
-    if (path.extname(resolvedPath).toLowerCase() !== '.zip') {
-      logger.error('Input file must be a .zip archive');
-      process.exit(1);
-    }
-
-    const project = parseZip(resolvedPath);
-
-    console.log('');
-    logger.info(`Project : ${project.name}`);
-    logger.info(`Files   : ${project.totalFiles}`);
-    logger.info(`Dirs    : ${project.totalDirectories}`);
-
-    if (options.verbose) {
       console.log('');
-      project.entries
-        .filter((e) => !e.isDirectory)
-        .forEach((e) => logger.debug(`  ${e.path} (${e.size}b)`));
+      logger.info(`Kind   : ${source.kind}`);
+      logger.info(`Files  : ${files.length}`);
+
+      if (options.verbose) {
+        console.log('');
+        files.forEach((f) => logger.debug(`  ${f.relativePath} (${f.size}b)`));
+      }
+    } catch (err) {
+      logger.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('analyze <input>')
+  .description('Analisa um projeto e exibe relatório detalhado')
+  .option('-v, --verbose', 'Habilita saída verbose')
+  .action(async (input: string, options: { verbose?: boolean }) => {
+    if (options.verbose) setVerbose(true);
+
+    try {
+      const source = resolveSource(input);
+      logger.info(`Fonte: ${source.describe()}`);
+
+      const files = await source.load();
+
+      const projectName = path.basename(input).replace(/\.zip$/i, '');
+      const report = analyzeProject(files, projectName);
+
+      printReport(report);
+    } catch (err) {
+      logger.error((err as Error).message);
+      process.exit(1);
     }
   });
 
