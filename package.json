@@ -1,0 +1,27 @@
+{
+  "name": "lovable-migrate",
+  "version": "0.1.0",
+  "description": "Migration engine for Lovable.dev exported projects",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "bin": {
+    "lovable-migrate": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

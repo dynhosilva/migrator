@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"D:\\\\lovable-migrate\" -ErrorAction SilentlyContinue | Select-Object Name, LastWriteTime; if \\(-not \\(Test-Path \"D:\\\\lovable-migrate\"\\)\\) { \"Diretório não encontrado\" })"
+    ]
+  }
+}
