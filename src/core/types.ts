@@ -2,6 +2,7 @@ import type { ProjectFile, SourceKind } from '../sources/types';
 import type { AnalysisReport } from '../analyzer/types';
 import type { MigrationPlan } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
+import type { ValidationResult } from '../validator/types';
 
 export interface SourceInfo {
   kind: SourceKind;
@@ -34,6 +35,9 @@ export interface ProjectContext {
 
   // Preenchido pela fase de planejamento
   readonly plan?: MigrationPlan;
+
+  // Preenchido pela fase de validação
+  readonly validation?: ValidationResult;
 
   // Preenchido pela fase de migração
   readonly migration?: MigrationResult;

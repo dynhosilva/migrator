@@ -12,6 +12,7 @@ import type {
   RiskLevel,
 } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
+import type { ValidationResult, ValidationIssue } from '../validator/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -346,6 +347,76 @@ function renderMigration(result: MigrationResult): void {
   console.log('');
 }
 
+const SEVERITY_COLOR: Record<string, (s: string) => string> = {
+  critical: (s) => chalk.red.bold(s),
+  warning:  (s) => chalk.yellow(s),
+  info:     (s) => chalk.blue(s),
+};
+
+const SEVERITY_LABEL: Record<string, string> = {
+  critical: 'CRÍTICO',
+  warning:  'AVISO',
+  info:     'INFO',
+};
+
+function renderIssue(issue: ValidationIssue): void {
+  const colorFn = SEVERITY_COLOR[issue.severity] ?? ((s: string) => s);
+  const label   = SEVERITY_LABEL[issue.severity] ?? issue.severity.toUpperCase();
+  console.log(`  ${colorFn(`[${label}]`)} ${chalk.gray(`(${issue.rule})`)} ${issue.message}`);
+  if (issue.suggestion) {
+    console.log(`    ${chalk.gray('→')} ${chalk.gray(issue.suggestion)}`);
+  }
+}
+
+function renderValidation(result: ValidationResult): void {
+  const W = 56;
+  const hasCritical = result.blockingIssues.length > 0;
+  const headerColor = hasCritical ? chalk.bold.red : chalk.bold.green;
+
+  console.log('');
+  console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(headerColor(`  │${'  Relatório de Validação'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Regras executadas', chalk.white(String(result.summary.rulesExecuted)));
+
+  if (result.safeToMigrate) {
+    row('Status', chalk.green.bold('✓ SEGURO para migração'));
+  } else {
+    row('Status', chalk.red.bold(`✗ NÃO SEGURO — ${result.summary.criticalCount} issue(s) crítico(s)`));
+  }
+
+  if (result.blockingIssues.length > 0) {
+    section('Issues Críticos (bloqueiam migração)');
+    result.blockingIssues.forEach(renderIssue);
+  }
+
+  if (result.warnings.length > 0) {
+    section('Avisos');
+    result.warnings.forEach(renderIssue);
+  }
+
+  if (result.infos.length > 0) {
+    section('Informações');
+    result.infos.forEach(renderIssue);
+  }
+
+  if (result.issues.length === 0) {
+    console.log('');
+    console.log(`  ${chalk.green('✓')}  ${chalk.green('Nenhum problema detectado — projeto pronto para migração.')}`);
+  }
+
+  console.log('');
+  console.log(chalk.gray(
+    `  Resumo: ${result.summary.criticalCount} crítico(s) · ` +
+    `${result.summary.warningCount} aviso(s) · ` +
+    `${result.summary.infoCount} info(s)`,
+  ));
+  console.log(chalk.gray(`  Validado em: ${result.validatedAt}`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -356,6 +427,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.plan) {
       renderPlan(ctx.plan);
+    }
+
+    if (ctx.validation) {
+      renderValidation(ctx.validation);
     }
 
     if (ctx.migration) {

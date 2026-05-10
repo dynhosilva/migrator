@@ -6,14 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `lovable-migrate` é uma **engine de migração** para projetos exportados do [Lovable.dev](https://lovable.dev). O objetivo é automatizar a migração de projetos Lovable para ambientes self-hosted, cobrindo análise, planejamento, transformação de código, deploy e re-sincronização.
 
-Atualmente implementado: análise inteligente (foundation). As próximas fases estão planejadas mas **não implementadas**.
-
 ## Roadmap de fases (em ordem)
 
 | Fase | Módulo | Responsabilidade |
 |---|---|---|
 | ✅ Analyze | `src/analyzer/` | Detecta stack, framework, Supabase, rotas, env vars |
 | ✅ Plan | `src/planner/` | Gera `MigrationPlan` a partir do `AnalysisReport` via registry de strategies |
+| ✅ Validate | `src/validator/` | Valida plano e análise — bloqueia migrações inseguras ou incompletas |
 | ✅ Migrate v1 | `src/migrator/` | Gera artefatos filesystem (env, migrations, instruções, relatório) |
 | 🔲 Deploy | `src/deploy/` | Empacota e envia (Hostinger, Docker) |
 | 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
@@ -38,7 +37,8 @@ Ao passar argumentos para o CLI via `npm run dev`, use `--` para separar flags d
 npm run dev -- inspect <input> [-v|--verbose]
 npm run dev -- analyze <input> [-v|--verbose] [-f|--format terminal|json]
 npm run dev -- plan    <input> [-v|--verbose] [-f|--format terminal|json]
-npm run dev -- migrate <input> [-v|--verbose] [-f|--format terminal|json] [-o|--output <dir>]
+npm run dev -- validate <input> [-v|--verbose] [-f|--format terminal|json]
+npm run dev -- migrate <input> [-v|--verbose] [-f|--format terminal|json] [-o|--output <dir>] [--force]
 
 # Via build compilado
 npm start migrate <input> --output ./output/meu-projeto
@@ -58,10 +58,13 @@ lovable-migrate migrate /path/to/project -o ./output/meu-projeto
 
 ```
 resolveSource(input)
-  → source.load()    → ProjectFile[]
-  → createContext()  → ProjectContext           (src/core/)
-  → analyzeContext() → ProjectContext enriched  (src/analyzer/)
-  → renderer.render()                           (src/output/)
+  → source.load()     → ProjectFile[]
+  → createContext()   → ProjectContext            (src/core/)
+  → analyzeContext()  → ProjectContext + analysis (src/analyzer/)
+  → planContext()     → ProjectContext + plan     (src/planner/)
+  → validateContext() → ProjectContext + validation (src/validator/)
+  → migrateContext()  → ProjectContext + migration (src/migrator/)
+  → renderer.render()                             (src/output/)
 ```
 
 `ProjectContext` (`src/core/types.ts`) é a espinha dorsal imutável do pipeline. Cada fase recebe o contexto e retorna uma nova versão via spread com seu campo preenchido. **Nunca mutar o contexto — sempre criar novo via `{ ...ctx, novocampo }`**.
@@ -77,10 +80,11 @@ Campos futuros já reservados na interface (comentados):
 
 | Módulo | Responsabilidade |
 |---|---|
-| `src/core/` | `ProjectContext`, `createContext`, `withAnalysis`, `withPlan`, `withMigration` |
+| `src/core/` | `ProjectContext`, `createContext`, `withAnalysis`, `withPlan`, `withValidation`, `withMigration` |
 | `src/sources/` | Leitura de fontes: `LocalFolderSource`, `ZipSource`, `GitHubSource`. `resolveSource()` detecta o tipo automaticamente |
 | `src/analyzer/` | Análise via `DetectorRegistry` com 10 detectores especializados |
 | `src/planner/` | Planejamento via `PlannerRegistry` com 7 strategies independentes |
+| `src/validator/` | Validação via `ValidationRegistry` com 7 rules independentes |
 | `src/migrator/` | Migração filesystem via `MigratorRegistry` com 6 tasks geradoras |
 | `src/output/` | Renderização desacoplada: interface `Renderer`, `TerminalRenderer`, `JsonRenderer` |
 | `src/logger/` | Logger com níveis `debug/info/warn/error` e flag verbose |
@@ -204,14 +208,50 @@ O `MigrationResult` foi projetado como contrato para versões futuras:
 - `report.checklist[].done: false` → migrator v2 pode marcar itens como concluídos ao executar
 - `deployInstructions.files` → base para geração de scripts shell/CI executáveis
 
-### Fluxo planner → migrator
+### Validator Registry (`src/validator/registry.ts`)
 
-O `MigrationPlan` é o contrato entre o planner e o migrator:
+O validator segue o mesmo padrão de registry, mas com `ValidationRule` em vez de `Strategy`/`MigrationTask`. Cada rule recebe o `ProjectContext` completo (com `analysis` e `plan` preenchidos) e retorna `ValidationIssue[]`.
+
+**Severidades:**
+- `critical` — marca `safeToMigrate = false` e bloqueia o `migrate` command (a menos que `--force` seja usado)
+- `warning` — problema real que requer atenção mas não bloqueia automaticamente
+- `info` — contexto relevante que o usuário deve estar ciente
+
+**Rules registradas (em ordem de execução):**
+
+| Key | Arquivo | Issues produzidos |
+|---|---|---|
+| `filesystem` | `rules/filesystem.ts` | `PATH_TRAVERSAL_DETECTED` (critical), `PACKAGE_JSON_MISSING` (critical), `NO_ENTRY_POINT` (warning) |
+| `framework` | `rules/framework.ts` | `FRAMEWORK_UNKNOWN` (critical), `FRAMEWORK_UNSUPPORTED` (warning) |
+| `build-system` | `rules/build-system.ts` | `BUILD_SYSTEM_UNKNOWN` (warning) |
+| `env` | `rules/env.ts` | `ENV_VARS_UNRESOLVED` (critical), `ENV_VARS_NONE_DETECTED` (info), `ENV_WARNING` (warning) |
+| `deploy-compatibility` | `rules/deploy-compatibility.ts` | `DEPLOY_STRATEGY_UNKNOWN` (critical), `NEXT_STATIC_INCOMPATIBLE` (critical), `DEPLOY_CONFIDENCE_LOW` (warning), `DEPLOY_CONFIDENCE_MEDIUM` (info) |
+| `supabase` | `rules/supabase.ts` | `EDGE_FUNCTIONS_WITHOUT_SUPABASE` (warning), `EDGE_FUNCTIONS_MANUAL_DEPLOY` (warning), `SUPABASE_AUTH_UNCONFIGURED` (info), `SUPABASE_STORAGE_MANUAL` (info) |
+| `migration-safety` | `rules/migration-safety.ts` | `MIGRATIONS_REQUIRE_STAGING` (warning), `MIGRATIONS_ORDER_UNVERIFIED` (info) |
+
+**`validateProject(ctx)`** — retorna `ValidationResult` puro (sem I/O, sem efeitos).
+**`validateContext(ctx)`** — chama `validateProject`, retorna novo `ProjectContext` com `validation` preenchido via `withValidation`.
+
+O `migrate` command bloqueia se `safeToMigrate === false`. Use `--force` para prosseguir mesmo assim (útil para projetos reais onde as env vars ainda não estão configuradas mas o migrator precisa gerar os artefatos).
+
+O `validate` command retorna exit code 1 se `safeToMigrate === false` — permite uso em pipelines CI/CD.
+
+Para adicionar nova rule: criar arquivo em `rules/`, registrar no registry em `index.ts`. Sem mais alterações.
+
+### Fluxo planner → validator → migrator
+
+O `ValidationResult` é o contrato entre o validator e o migrator:
 - `checklist` → lista de tarefas que o migrator/deploy pode executar automaticamente
 - `deployStrategy.recommended` → informa ao migrator qual template/estratégia usar
 - `infrastructure` → informa ao deploy quais recursos provisionar
 - `supabase.manualSteps` → itens que não podem ser automatizados (requerem CLI ou dashboard)
-- `risks` → o migrator deve bloqueiar em riscos `critical` antes de prosseguir
+- `risks` → complementado e refinado pelo validator antes de chegar ao migrator
+
+O `ValidationResult` expõe:
+- `safeToMigrate` → gate de segurança — false bloqueia o migrator por padrão
+- `blockingIssues` → issues críticos com `code`, `rule`, `message`, `suggestion`
+- `warnings` / `infos` → visíveis no relatório mas não bloqueantes
+- `summary.rulesExecuted` → auditabilidade — quantas rules foram avaliadas
 
 ### Output / Renderers
 
@@ -297,3 +337,5 @@ Toda nova fase (migrator, deploy, sync) segue este padrão obrigatório:
 - Não adicionar lógica de negócio em strategies do planner — cada strategy é pura e stateless; state compartilhado passa por `ctx.partial`.
 - Não adicionar I/O em tasks do migrator — toda escrita em disco deve ficar em `src/migrator/writer.ts`.
 - Não escrever fora do `outputDir` no migrator — `writer.ts` valida por path resolution antes de qualquer escrita.
+- Não adicionar correção automática em rules do validator — o validator é somente leitura, classificação e bloqueio de risco; correções ficam no migrator v2 ou deploy.
+- Não criar dependências entre rules do validator — cada rule lê `ProjectContext` diretamente; nunca importar uma rule dentro de outra.

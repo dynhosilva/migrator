@@ -3,7 +3,7 @@ export { resolveSource, LocalFolderSource, ZipSource, GitHubSource, DEFAULT_IGNO
 export type { ProjectFile, ProjectSource, SourceKind, IgnoreRule } from './sources';
 
 // Core — espinha dorsal do pipeline
-export { createContext, withAnalysis, withPlan, withMigration } from './core';
+export { createContext, withAnalysis, withPlan, withValidation, withMigration } from './core';
 export type { ProjectContext, SourceInfo, ProjectMeta } from './core';
 
 // Analyzer
@@ -38,6 +38,16 @@ export type {
   RiskLevel,
   DeployTarget,
 } from './planner';
+
+// Validator
+export { validateProject, validateContext, ValidationRegistry } from './validator';
+export type {
+  ValidationResult,
+  ValidationIssue,
+  ValidationSeverity,
+  ValidationSummary,
+  ValidationRule,
+} from './validator';
 
 // Migrator
 export { migrateProject, migrateContext } from './migrator';

@@ -9,9 +9,10 @@ export class JsonRenderer implements Renderer {
       return;
     }
     const output: Record<string, unknown> = {};
-    if (ctx.analysis)  output['analysis']  = ctx.analysis;
-    if (ctx.plan)      output['plan']      = ctx.plan;
-    if (ctx.migration) output['migration'] = ctx.migration;
+    if (ctx.analysis)   output['analysis']   = ctx.analysis;
+    if (ctx.plan)       output['plan']       = ctx.plan;
+    if (ctx.validation) output['validation'] = ctx.validation;
+    if (ctx.migration)  output['migration']  = ctx.migration;
     console.log(JSON.stringify(output, null, 2));
   }
 }

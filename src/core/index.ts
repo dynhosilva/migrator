@@ -2,6 +2,7 @@ import type { ProjectSource, ProjectFile } from '../sources/types';
 import type { AnalysisReport } from '../analyzer/types';
 import type { MigrationPlan } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
+import type { ValidationResult } from '../validator/types';
 import type { ProjectContext } from './types';
 
 export type { ProjectContext, SourceInfo, ProjectMeta } from './types';
@@ -35,6 +36,11 @@ export function withAnalysis(ctx: ProjectContext, analysis: AnalysisReport): Pro
 /** Retorna novo contexto imutável com o plano de migração preenchido. */
 export function withPlan(ctx: ProjectContext, plan: MigrationPlan): ProjectContext {
   return { ...ctx, plan };
+}
+
+/** Retorna novo contexto imutável com o resultado da validação preenchido. */
+export function withValidation(ctx: ProjectContext, validation: ValidationResult): ProjectContext {
+  return { ...ctx, validation };
 }
 
 /** Retorna novo contexto imutável com o resultado da migração preenchido. */
