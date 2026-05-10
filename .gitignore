@@ -3,3 +3,11 @@ dist/
 *.js.map
 .env
 *.log
+
+# Workspace artifacts — projetos de exemplo, teste e fixtures locais.
+# Esses diretórios não fazem parte da engine e não devem ser versionados.
+strat-forge-pro/
+test/
+teste/
+examples/
+fixtures/

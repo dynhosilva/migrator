@@ -1,7 +1,8 @@
 // Regra de ignore: nome exato ("node_modules") ou padrão de extensão ("*.log").
 export type IgnoreRule = string;
 
-export const DEFAULT_IGNORE: IgnoreRule[] = [
+// Artefatos de build e dependências — nunca devem ser analisados.
+const BUILD_IGNORE: IgnoreRule[] = [
   'node_modules',
   'dist',
   'build',
@@ -10,6 +11,28 @@ export const DEFAULT_IGNORE: IgnoreRule[] = [
   'coverage',
   '*.log',
   '*.zip',
+];
+
+/**
+ * Artefatos de workspace — projetos auxiliares, exemplos e fixtures que vivem
+ * no repositório da engine mas não são o alvo da análise.
+ *
+ * Qualquer diretório com esses nomes convencionais é excluído automaticamente,
+ * evitando contaminação do analyzer com conteúdo interno do workspace.
+ *
+ * Para ignorar projetos com nomes arbitrários, passe-os via extraIgnore
+ * nas classes de source (LocalFolderSource, ZipSource, GitHubSource).
+ */
+export const WORKSPACE_ARTIFACT_IGNORE: IgnoreRule[] = [
+  'test',
+  'teste',
+  'examples',
+  'fixtures',
+];
+
+export const DEFAULT_IGNORE: IgnoreRule[] = [
+  ...BUILD_IGNORE,
+  ...WORKSPACE_ARTIFACT_IGNORE,
 ];
 
 function matchesRule(rule: IgnoreRule, segment: string): boolean {
