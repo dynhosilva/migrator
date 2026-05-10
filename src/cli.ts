@@ -2,7 +2,9 @@
 import path from 'path';
 import { Command } from 'commander';
 import { resolveSource } from './sources';
-import { analyzeProject, printReport } from './analyzer';
+import { analyzeContext } from './analyzer';
+import { createContext } from './core';
+import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
 
 const program = new Command();
@@ -43,19 +45,26 @@ program
   .command('analyze <input>')
   .description('Analisa um projeto e exibe relatório detalhado')
   .option('-v, --verbose', 'Habilita saída verbose')
-  .action(async (input: string, options: { verbose?: boolean }) => {
+  .option('-f, --format <format>', 'Formato de saída: terminal | json', 'terminal')
+  .action(async (input: string, options: { verbose?: boolean; format?: string }) => {
     if (options.verbose) setVerbose(true);
 
     try {
-      const source = resolveSource(input);
+      const source      = resolveSource(input);
+      const files       = await source.load();
+      const projectName = path.basename(input).replace(/\.zip$/i, '');
+
       logger.info(`Fonte: ${source.describe()}`);
 
-      const files = await source.load();
+      // Pipeline: fonte → contexto → análise → renderização
+      const ctx      = createContext(source, input, projectName, files);
+      const enriched = analyzeContext(ctx);
 
-      const projectName = path.basename(input).replace(/\.zip$/i, '');
-      const report = analyzeProject(files, projectName);
+      const renderer = options.format === 'json'
+        ? new JsonRenderer()
+        : new TerminalRenderer();
 
-      printReport(report);
+      renderer.render(enriched);
     } catch (err) {
       logger.error((err as Error).message);
       process.exit(1);
