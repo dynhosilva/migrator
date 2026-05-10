@@ -1,0 +1,58 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Runtime — react-vite (execução local com resultados esperados) > runtime-log.json normalizado corresponde ao snapshot 1`] = `
+{
+  "entries": [
+    {
+      "args": [
+        "install",
+      ],
+      "command": "npm",
+      "durationMs": "<DURATION_MS>",
+      "exitCode": -1,
+      "stderrSummary": "<REDACTED>",
+      "stdoutSummary": "",
+      "success": false,
+      "task": "npm-install",
+      "timedOut": false,
+      "timestamp": "<TIMESTAMP>",
+    },
+    {
+      "args": [
+        "run",
+        "build",
+      ],
+      "command": "npm",
+      "durationMs": "<DURATION_MS>",
+      "exitCode": -1,
+      "stderrSummary": "<REDACTED>",
+      "stdoutSummary": "",
+      "success": false,
+      "task": "build",
+      "timedOut": false,
+      "timestamp": "<TIMESTAMP>",
+    },
+    {
+      "args": [
+        "build",
+        "--file",
+        "<OUTPUT_DIR>/docker/Dockerfile",
+        "--tag",
+        "react-vite:latest",
+        "<PROJECT_DIR>",
+      ],
+      "command": "docker",
+      "durationMs": "<DURATION_MS>",
+      "exitCode": -1,
+      "stderrSummary": "<REDACTED>",
+      "stdoutSummary": "",
+      "success": false,
+      "task": "docker-build",
+      "timedOut": false,
+      "timestamp": "<TIMESTAMP>",
+    },
+  ],
+  "generatedAt": "<TIMESTAMP>",
+  "projectName": "react-vite",
+}
+`;

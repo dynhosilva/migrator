@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ✅ Migrate v1 | `src/migrator/` | Gera artefatos filesystem (env, migrations, instruções, relatório) |
 | ✅ Deploy v1 | `src/deploy/` | Gera artefatos Docker (Dockerfile, docker-compose.yml, .dockerignore) |
 | ✅ Execute v1 | `src/executor/` | Verifica ambiente + valida artefatos + gera plano de execução e dry-run |
+| ✅ Runtime v1 | `src/runtime/` | Execução local real: install, build, docker build + logs estruturados |
 | 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
 
 Integrações externas planejadas: **Supabase** (migrations, auth, edge functions) e **Hostinger** (deploy de VPS).
@@ -323,6 +324,62 @@ output/<project>/
 
 Para adicionar nova task: criar arquivo em `tasks/`, registrar no registry em `index.ts`. Sem mais alterações.
 
+### Runtime Registry (`src/runtime/registry.ts`)
+
+O runtime é a única fase **assíncrona** do pipeline — o `RuntimeRegistry.run()` usa `await` sequencial em cada task porque as tasks invocam processos reais (`npm install`, `npm run build`, `docker build`).
+
+**Filosofia do runtime v1:**
+- Apenas execução LOCAL e controlada — sem SSH, sem VPS, sem cloud
+- Toda execução passa pelo `sandbox.ts` (whitelist de executáveis + `shell: false`)
+- `shell: false` no `spawn` = injeção por args é impossível ao nível do SO
+- Toda escrita é restrita ao `outputDir/runtime/`
+- Execução observável: cada comando retorna `CommandResult` com stdout, stderr, durationMs, timedOut
+
+**`sandbox.ts` — whitelist e proteção:**
+
+Executáveis permitidos: `node`, `npm`, `npx`, `pnpm`, `yarn`, `bun`, `docker`
+
+Bloqueados implicitamente (não na whitelist): `rm`, `del`, `format`, `shutdown`, `reboot`, `bash`, `powershell`, `sh`, `cmd` e qualquer outro.
+
+**`process.ts` — execução de baixo nível:**
+
+Usa `spawn` com `shell: false`. Captura stdout/stderr com limite de 4096 bytes. Mata o processo com `SIGTERM` ao atingir o timeout. Sempre retorna `CommandResult` (nunca joga exceção para erros de processo).
+
+**`projectDir` vs `outputDir`:**
+- `projectDir`: diretório do projeto fonte onde `npm install` e `npm run build` rodam
+- `outputDir`: artefatos gerados (migrate, deploy, execute) — o Dockerfile fica em `outputDir/docker/`
+- O `docker build` usa `--file outputDir/docker/Dockerfile` com contexto de `projectDir`
+
+**Tasks registradas (em ordem de execução):**
+
+| Key | Arquivo | Responsabilidade |
+|---|---|---|
+| `install` | `tasks/npm-install-runner.ts` | Executa npm/pnpm/yarn/bun install em projectDir |
+| `build` | `tasks/build-runner.ts` | Executa npm run build, valida artefatos gerados |
+| `dockerBuild` | `tasks/docker-build-runner.ts` | Executa docker build com Dockerfile do outputDir |
+| `artifacts` | `tasks/artifact-validator.ts` | Valida existência de dist/, Dockerfile, .env.example, etc. |
+| `log` | `tasks/runtime-logger.ts` | Gera runtime/runtime-log.json com CommandResults |
+| `summary` | `tasks/execution-summary.ts` | Gera runtime/runtime-summary.md com status legível |
+
+**`RuntimeReadiness`:** `'success'` | `'partial'` | `'failed'`
+
+**`RuntimeIssueSeverity`:** `'blocker'` | `'warning'` | `'info'`
+
+**Estrutura de saída gerada:**
+```
+output/<project>/
+└── runtime/
+    ├── runtime-log.json   ← CommandResults estruturados (task, exitCode, durationMs, etc.)
+    └── runtime-summary.md ← Sumário legível com próximos passos
+```
+
+**`runProject(ctx, outputDir, projectDir?)`** — executa registry (async) → coleta arquivos → escreve → computa readiness.
+**`runContext(ctx, outputDir, projectDir?)`** — enriquece `ProjectContext` com `RuntimeState` via `withRuntime`.
+
+`projectDir` tem default `ctx.source.inputPath`. Em testes, passar cópia do fixture para não poluir os fixtures originais.
+
+Para adicionar nova task: criar arquivo em `tasks/`, registrar no registry em `index.ts`. Sem mais alterações.
+
 ### Fluxo planner → validator → migrator
 
 O `ValidationResult` é o contrato entre o validator e o migrator:
@@ -492,3 +549,7 @@ Para adicionar novo teste de snapshot: usar `normalizeOutput()` antes de `toMatc
 - Não criar dependências entre rules do validator — cada rule lê `ProjectContext` diretamente; nunca importar uma rule dentro de outra.
 - Não executar builds, docker run, ou comandos com efeitos colaterais no executor — tasks do executor são somente leitura; a única escrita permitida é `outputDir/execution/`.
 - Não adicionar lógica de execução real no executor v1 — o executor gera planos e verifica pré-condições; execução real fica no executor v2.
+- Não usar `exec` ou `execFile` no runtime — usar apenas `spawn` com `shell: false` (definido em `process.ts`); o shell interpreta metacaracteres, `spawn` não.
+- Não chamar `runCommand` diretamente nas tasks de runtime — sempre passar por `runSafeCommand` do `sandbox.ts` para garantir validação de whitelist.
+- Não adicionar executáveis à whitelist sem revisão explícita — cada adição amplia a superfície de ataque do runtime.
+- Não rodar `npm install` no diretório original do fixture em testes — copiar o fixture para um temp dir primeiro (`fs.cpSync`) para manter as fixtures somente-leitura.

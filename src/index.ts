@@ -3,7 +3,7 @@ export { resolveSource, LocalFolderSource, ZipSource, GitHubSource, DEFAULT_IGNO
 export type { ProjectFile, ProjectSource, SourceKind, IgnoreRule } from './sources';
 
 // Core — espinha dorsal do pipeline
-export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution } from './core';
+export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime } from './core';
 export type { ProjectContext, SourceInfo, ProjectMeta } from './core';
 
 // Analyzer
@@ -86,6 +86,22 @@ export type {
   ExecutionReadiness,
   ExecutionIssueSeverity,
 } from './executor';
+
+// Runtime
+export { runProject, runContext, validateCommand, runSafeCommand, ALLOWED_EXECUTABLES, SandboxViolationError } from './runtime';
+export type {
+  RuntimeState,
+  NpmInstallResult,
+  BuildResult,
+  DockerBuildResult,
+  ArtifactValidationResult,
+  RuntimeLogArtifacts,
+  RuntimeSummaryArtifacts,
+  RuntimeIssue,
+  CommandResult,
+  RuntimeReadiness,
+  RuntimeIssueSeverity,
+} from './runtime';
 
 // Output — renderização desacoplada
 export { TerminalRenderer, JsonRenderer } from './output';

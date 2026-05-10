@@ -18,6 +18,7 @@ import { validateContext } from '../../src/validator';
 import { migrateContext }  from '../../src/migrator';
 import { deployContext }   from '../../src/deploy';
 import { executeContext }  from '../../src/executor';
+import { runContext }      from '../../src/runtime';
 import type { ProjectContext } from '../../src/core/types';
 
 /** Caminho absoluto para o diretório de fixtures. */
@@ -97,4 +98,26 @@ export async function runExecutePipeline(
 ): Promise<ProjectContext> {
   const deployed = await runPipeline(name, outputDir, force);
   return executeContext(deployed, outputDir);
+}
+
+/**
+ * Executa o pipeline completo incluindo a fase de runtime:
+ * analyze → plan → validate → migrate → deploy → execute → runtime.
+ *
+ * Copia o fixture para projectDir para que npm install não polua a fixture.
+ * O chamador é responsável por limpar projectDir após o teste.
+ *
+ * @param name       Nome do fixture
+ * @param outputDir  Diretório de saída (use makeTempDir())
+ * @param projectDir Diretório gravável com cópia do fixture (use makeTempDir() + cpSync)
+ * @param force      Prossegue com issues críticos de validação
+ */
+export async function runRuntimePipeline(
+  name: string,
+  outputDir: string,
+  projectDir: string,
+  force = false,
+): Promise<ProjectContext> {
+  const executed = await runExecutePipeline(name, outputDir, force);
+  return runContext(executed, outputDir, projectDir);
 }

@@ -38,6 +38,7 @@ function normalizeValue(value: unknown, replacements: [RegExp, string][]): unkno
 export interface NormalizeDirs {
   fixtureDir?: string;
   outputDir?: string;
+  projectDir?: string;
 }
 
 /**
@@ -61,6 +62,11 @@ export function normalizeOutput(value: unknown, dirs: NormalizeDirs = {}): unkno
     replacements.push([new RegExp(escapeRegex(norm), 'g'), '<OUTPUT_DIR>']);
   }
 
+  if (dirs.projectDir) {
+    const norm = dirs.projectDir.replace(/\\/g, '/');
+    replacements.push([new RegExp(escapeRegex(norm), 'g'), '<PROJECT_DIR>']);
+  }
+
   return normalizeValue(value, replacements);
 }
 
@@ -72,4 +78,38 @@ export function normalizeTimestamps(value: unknown): unknown {
 /** Normaliza apenas separadores de caminho (backslash → forward slash). */
 export function normalizePaths(value: unknown): unknown {
   return normalizeValue(value, []);
+}
+
+/**
+ * Normaliza campos dinâmicos específicos do runtime-log.json:
+ * - durationMs → 0 (varia entre execuções)
+ * - stdoutSummary, stderrSummary, stdout, stderr → placeholders (conteúdo do SO varia)
+ * - versões de ferramentas → <VERSION>
+ */
+export function normalizeRuntimeLog(value: unknown, dirs: NormalizeDirs = {}): unknown {
+  const normalized = normalizeOutput(value, dirs);
+  return replaceRuntimeDynamics(normalized);
+}
+
+function replaceRuntimeDynamics(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') return value;
+
+  if (Array.isArray(value)) {
+    return value.map(replaceRuntimeDynamics);
+  }
+
+  const obj = value as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === 'durationMs') {
+      result[key] = '<DURATION_MS>';
+    } else if (key === 'stdoutSummary' || key === 'stderrSummary' || key === 'stdout' || key === 'stderr') {
+      result[key] = val === '' ? '' : '<REDACTED>';
+    } else {
+      result[key] = replaceRuntimeDynamics(val);
+    }
+  }
+
+  return result;
 }

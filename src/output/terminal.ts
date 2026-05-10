@@ -15,6 +15,7 @@ import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult, ValidationIssue } from '../validator/types';
 import type { DeployState } from '../deploy/types';
 import type { ExecutionState, ExecutionIssue as ExecIssue } from '../executor/types';
+import type { RuntimeState, RuntimeIssue as RtIssue } from '../runtime/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -541,6 +542,92 @@ function renderExecution(state: ExecutionState): void {
   console.log('');
 }
 
+const RUNTIME_READINESS_COLOR: Record<string, (s: string) => string> = {
+  success: (s) => chalk.green.bold(s),
+  partial: (s) => chalk.yellow.bold(s),
+  failed:  (s) => chalk.red.bold(s),
+};
+
+const RUNTIME_READINESS_LABEL: Record<string, string> = {
+  success: '✓ SUCESSO',
+  partial: '⚠ PARCIAL',
+  failed:  '✗ FALHOU',
+};
+
+function renderRtIssue(issue: RtIssue): void {
+  const colorFn = issue.severity === 'blocker' ? chalk.red.bold
+    : issue.severity === 'warning' ? chalk.yellow
+    : chalk.blue;
+  const label = issue.severity === 'blocker' ? 'BLOQUEADOR'
+    : issue.severity === 'warning' ? 'AVISO'
+    : 'INFO';
+  console.log(`  ${colorFn(`[${label}]`)} ${issue.message}`);
+  if (issue.suggestion) {
+    console.log(`    ${chalk.gray('→')} ${chalk.gray(issue.suggestion)}`);
+  }
+}
+
+function renderRuntime(state: RuntimeState): void {
+  const W = 56;
+  const readiness = state.readiness;
+  const headerColor = readiness === 'success' ? chalk.bold.green
+    : readiness === 'partial' ? chalk.bold.yellow
+    : chalk.bold.red;
+
+  console.log('');
+  console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(headerColor(`  │${'  Runtime — Execução Local'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto',    chalk.white(state.projectName));
+  const colorFn = RUNTIME_READINESS_COLOR[readiness] ?? ((s: string) => s);
+  row('Prontidão', colorFn(RUNTIME_READINESS_LABEL[readiness] ?? readiness));
+
+  section('Execução');
+  const { install, build, dockerBuild } = state;
+  const fmt = (r: { success: boolean; skipped: boolean }) =>
+    r.skipped ? chalk.gray('⏭ pulado') : r.success ? chalk.green('✓ sucesso') : chalk.red('✗ falhou');
+
+  console.log(`  ${chalk.gray('npm install'.padEnd(18))} ${fmt(install)}`);
+  console.log(`  ${chalk.gray('build'.padEnd(18))} ${fmt(build)}`);
+  console.log(`  ${chalk.gray('docker build'.padEnd(18))} ${fmt(dockerBuild)}`);
+
+  if (!dockerBuild.skipped) {
+    console.log('');
+    row('Imagem', chalk.white(`${dockerBuild.imageTag}:latest`));
+  }
+
+  const allBlockers: RtIssue[] = [
+    ...(install.issues.filter((i) => i.severity === 'blocker')),
+    ...(build.issues.filter((i) => i.severity === 'blocker')),
+    ...(dockerBuild.issues.filter((i) => i.severity === 'blocker')),
+    ...(state.artifacts.issues.filter((i) => i.severity === 'blocker')),
+  ];
+  const allWarnings: RtIssue[] = [
+    ...(install.issues.filter((i) => i.severity === 'warning')),
+    ...(build.issues.filter((i) => i.severity === 'warning')),
+    ...(dockerBuild.issues.filter((i) => i.severity === 'warning')),
+    ...(state.artifacts.issues.filter((i) => i.severity === 'warning')),
+  ];
+
+  if (allBlockers.length > 0) {
+    section('Bloqueadores');
+    allBlockers.forEach(renderRtIssue);
+  }
+
+  if (allWarnings.length > 0) {
+    section('Avisos');
+    allWarnings.forEach(renderRtIssue);
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Executado em: ${state.ranAt}`));
+  console.log(chalk.gray(`  Log: ${state.outputDir}/runtime/runtime-log.json`));
+  console.log(chalk.gray(`  Sumário: ${state.outputDir}/runtime/runtime-summary.md`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -567,6 +654,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.execution) {
       renderExecution(ctx.execution);
+    }
+
+    if (ctx.runtime) {
+      renderRuntime(ctx.runtime);
     }
   }
 }
