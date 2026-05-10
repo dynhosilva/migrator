@@ -17,6 +17,7 @@ import { planContext }     from '../../src/planner';
 import { validateContext } from '../../src/validator';
 import { migrateContext }  from '../../src/migrator';
 import { deployContext }   from '../../src/deploy';
+import { executeContext }  from '../../src/executor';
 import type { ProjectContext } from '../../src/core/types';
 
 /** Caminho absoluto para o diretório de fixtures. */
@@ -83,4 +84,17 @@ export async function runPipeline(
 
   const migrated = migrateContext(validated, outputDir);
   return deployContext(migrated, outputDir);
+}
+
+/**
+ * Executa o pipeline completo incluindo a fase de execução:
+ * analyze → plan → validate → migrate → deploy → execute.
+ */
+export async function runExecutePipeline(
+  name: string,
+  outputDir: string,
+  force = false,
+): Promise<ProjectContext> {
+  const deployed = await runPipeline(name, outputDir, force);
+  return executeContext(deployed, outputDir);
 }

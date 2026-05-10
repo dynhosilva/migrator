@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ✅ Validate | `src/validator/` | Valida plano e análise — bloqueia migrações inseguras ou incompletas |
 | ✅ Migrate v1 | `src/migrator/` | Gera artefatos filesystem (env, migrations, instruções, relatório) |
 | ✅ Deploy v1 | `src/deploy/` | Gera artefatos Docker (Dockerfile, docker-compose.yml, .dockerignore) |
+| ✅ Execute v1 | `src/executor/` | Verifica ambiente + valida artefatos + gera plano de execução e dry-run |
 | 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
 
 Integrações externas planejadas: **Supabase** (migrations, auth, edge functions) e **Hostinger** (deploy de VPS).
@@ -286,6 +287,42 @@ O `validate` command retorna exit code 1 se `safeToMigrate === false` — permit
 
 Para adicionar nova rule: criar arquivo em `rules/`, registrar no registry em `index.ts`. Sem mais alterações.
 
+### Executor Registry (`src/executor/registry.ts`)
+
+O executor segue o mesmo padrão dos outros registries, mas o `ExecutorTaskContext` expõe `ctx`, `partial` **e `outputDir`** — porque tasks como `validateDockerArtifacts` precisam verificar a existência de arquivos no disco.
+
+**Filosofia do executor v1:**
+- Nunca executa builds, `docker run`, ou qualquer comando que modifique estado
+- Sondas de ambiente (`node --version`, `docker --version`) são somente leitura
+- Toda escrita é restrita ao `outputDir/execution/`
+- Gera artefatos de planejamento, não executáveis
+
+**Tasks registradas (em ordem de execução):**
+
+| Key | Arquivo | Responsabilidade |
+|---|---|---|
+| `dockerCheck` | `tasks/docker-artifact-validator.ts` | Verifica se arquivos Docker existem em outputDir |
+| `buildCheck` | `tasks/build-command-validator.ts` | Lê scripts do package.json via ctx.analysis |
+| `envCheck` | `tasks/environment-checker.ts` | Sonda node/docker/PM via execSync (somente leitura) |
+| `runtimeCheck` | `tasks/runtime-compatibility-checker.ts` | Valida versão do Node (depende de partial.envCheck) |
+| `plan` | `tasks/execution-plan-generator.ts` | Gera execution-plan.json com passos ordenados |
+| `summary` | `tasks/summary-builder.ts` | Agrega todos os issues → `readiness` final |
+| `dryRun` | `tasks/dry-run-generator.ts` | Gera dry-run.md com preview legível |
+
+**`ExecutionReadiness`:** `'ready'` | `'ready-with-warnings'` | `'blocked'`
+
+**`ExecutionIssueSeverity`:** `'blocker'` (bloqueia) | `'warning'` | `'info'`
+
+**Estrutura de saída gerada:**
+```
+output/<project>/
+└── execution/
+    ├── execution-plan.json   ← passos ordenados de build + deploy
+    └── dry-run.md            ← preview humano do que seria executado
+```
+
+Para adicionar nova task: criar arquivo em `tasks/`, registrar no registry em `index.ts`. Sem mais alterações.
+
 ### Fluxo planner → validator → migrator
 
 O `ValidationResult` é o contrato entre o validator e o migrator:
@@ -453,3 +490,5 @@ Para adicionar novo teste de snapshot: usar `normalizeOutput()` antes de `toMatc
 - Não escrever fora do `outputDir` no migrator — `writer.ts` valida por path resolution antes de qualquer escrita.
 - Não adicionar correção automática em rules do validator — o validator é somente leitura, classificação e bloqueio de risco; correções ficam no migrator v2 ou deploy.
 - Não criar dependências entre rules do validator — cada rule lê `ProjectContext` diretamente; nunca importar uma rule dentro de outra.
+- Não executar builds, docker run, ou comandos com efeitos colaterais no executor — tasks do executor são somente leitura; a única escrita permitida é `outputDir/execution/`.
+- Não adicionar lógica de execução real no executor v1 — o executor gera planos e verifica pré-condições; execução real fica no executor v2.

@@ -5,7 +5,7 @@ dist/
 *.log
 
 # Output de migração gerado em runtime — nunca versionar
-output/
+/output/
 
 # Workspace artifacts externos — projetos de exemplo locais (raiz apenas)
 /strat-forge-pro/

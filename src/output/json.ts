@@ -14,6 +14,7 @@ export class JsonRenderer implements Renderer {
     if (ctx.validation) output['validation'] = ctx.validation;
     if (ctx.migration)  output['migration']  = ctx.migration;
     if (ctx.deploy)     output['deploy']     = ctx.deploy;
+    if (ctx.execution)  output['execution']  = ctx.execution;
     console.log(JSON.stringify(output, null, 2));
   }
 }

@@ -1,0 +1,263 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Executor — react-vite (static + npm) > ExecutionState normalizado corresponde ao snapshot 1`] = `
+{
+  "buildCheck": {
+    "buildCommand": "npm run build",
+    "devCommand": "npm run dev",
+    "hasBuildScript": true,
+    "hasDevScript": true,
+    "issues": [],
+    "packageManager": "npm",
+  },
+  "dockerCheck": {
+    "issues": [],
+    "missingFiles": [],
+    "presentFiles": [
+      "docker/Dockerfile",
+      "docker/docker-compose.yml",
+      "docker/.dockerignore",
+    ],
+    "valid": true,
+  },
+  "dryRun": {
+    "files": [
+      {
+        "content": "# Dry Run — react-vite
+
+**Status:** ❌ Bloqueado
+
+## Ambiente
+
+| Ferramenta | Disponível | Versão |
+|---|---|---|
+| Node.js | ✓ | v24.14.0 |
+| Docker | ✗ | — |
+| npm | ✓ | 11.9.0 |
+
+## Passos de execução
+
+### 1. Instala dependências usando npm
+
+\`\`\`bash
+npm ci
+\`\`\`
+
+### 2. Compila o projeto para produção
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+### 3. Constrói a imagem Docker do projeto
+
+\`\`\`bash
+docker build -t react-vite:latest -f docker/Dockerfile .
+\`\`\`
+
+### 4. Inicia os serviços em modo detached
+
+\`\`\`bash
+docker compose up -d
+\`\`\`
+
+## Bloqueadores
+
+- **DOCKER_NOT_FOUND**: Docker não encontrado no PATH.
+  - _Instale Docker Desktop ou Docker Engine antes de executar o deploy._
+
+---
+_Gerado em: <TIMESTAMP>_
+",
+        "description": "Preview de execução em modo dry-run",
+        "relativePath": "execution/dry-run.md",
+      },
+    ],
+  },
+  "envCheck": {
+    "dockerAvailable": false,
+    "dockerVersion": null,
+    "issues": [
+      {
+        "code": "DOCKER_NOT_FOUND",
+        "message": "Docker não encontrado no PATH.",
+        "severity": "blocker",
+        "suggestion": "Instale Docker Desktop ou Docker Engine antes de executar o deploy.",
+      },
+    ],
+    "nodeAvailable": true,
+    "nodeVersion": "v24.14.0",
+    "packageManagerAvailable": true,
+    "packageManagerVersion": "11.9.0",
+  },
+  "executedAt": "<TIMESTAMP>",
+  "outputDir": "<OUTPUT_DIR>",
+  "plan": {
+    "files": [
+      {
+        "content": "{
+  "projectName": "react-vite",
+  "generatedAt": "<TIMESTAMP>",
+  "steps": [
+    {
+      "id": "install-deps",
+      "command": "npm ci",
+      "description": "Instala dependências usando npm",
+      "optional": false
+    },
+    {
+      "id": "build",
+      "command": "npm run build",
+      "description": "Compila o projeto para produção",
+      "optional": false
+    },
+    {
+      "id": "docker-build",
+      "command": "docker build -t react-vite:latest -f docker/Dockerfile .",
+      "description": "Constrói a imagem Docker do projeto",
+      "optional": false
+    },
+    {
+      "id": "docker-up",
+      "command": "docker compose up -d",
+      "description": "Inicia os serviços em modo detached",
+      "optional": false
+    }
+  ]
+}",
+        "description": "Plano de execução gerado pelo executor v1",
+        "relativePath": "execution/execution-plan.json",
+      },
+    ],
+    "steps": [
+      {
+        "command": "npm ci",
+        "description": "Instala dependências usando npm",
+        "id": "install-deps",
+        "optional": false,
+      },
+      {
+        "command": "npm run build",
+        "description": "Compila o projeto para produção",
+        "id": "build",
+        "optional": false,
+      },
+      {
+        "command": "docker build -t react-vite:latest -f docker/Dockerfile .",
+        "description": "Constrói a imagem Docker do projeto",
+        "id": "docker-build",
+        "optional": false,
+      },
+      {
+        "command": "docker compose up -d",
+        "description": "Inicia os serviços em modo detached",
+        "id": "docker-up",
+        "optional": false,
+      },
+    ],
+  },
+  "projectName": "react-vite",
+  "runtimeCheck": {
+    "detectedNodeVersion": "v24.14.0",
+    "issues": [],
+    "nodeVersionOk": true,
+    "requiredNodeVersion": ">= 18",
+  },
+  "summary": {
+    "blockers": [
+      {
+        "code": "DOCKER_NOT_FOUND",
+        "message": "Docker não encontrado no PATH.",
+        "severity": "blocker",
+        "suggestion": "Instale Docker Desktop ou Docker Engine antes de executar o deploy.",
+      },
+    ],
+    "infos": [],
+    "readiness": "blocked",
+    "tasksExecuted": 4,
+    "warnings": [],
+  },
+}
+`;
+
+exports[`Executor — react-vite (static + npm) > dry-run.md normalizado corresponde ao snapshot 1`] = `
+"# Dry Run — react-vite
+
+**Status:** ❌ Bloqueado
+
+## Ambiente
+
+| Ferramenta | Disponível | Versão |
+|---|---|---|
+| Node.js | ✓ | v24.14.0 |
+| Docker | ✗ | — |
+| npm | ✓ | 11.9.0 |
+
+## Passos de execução
+
+### 1. Instala dependências usando npm
+
+\`\`\`bash
+npm ci
+\`\`\`
+
+### 2. Compila o projeto para produção
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+### 3. Constrói a imagem Docker do projeto
+
+\`\`\`bash
+docker build -t react-vite:latest -f docker/Dockerfile .
+\`\`\`
+
+### 4. Inicia os serviços em modo detached
+
+\`\`\`bash
+docker compose up -d
+\`\`\`
+
+## Bloqueadores
+
+- **DOCKER_NOT_FOUND**: Docker não encontrado no PATH.
+  - _Instale Docker Desktop ou Docker Engine antes de executar o deploy._
+
+---
+_Gerado em: <TIMESTAMP>_
+"
+`;
+
+exports[`Executor — react-vite (static + npm) > execution-plan.json normalizado corresponde ao snapshot 1`] = `
+{
+  "generatedAt": "<TIMESTAMP>",
+  "projectName": "react-vite",
+  "steps": [
+    {
+      "command": "npm ci",
+      "description": "Instala dependências usando npm",
+      "id": "install-deps",
+      "optional": false,
+    },
+    {
+      "command": "npm run build",
+      "description": "Compila o projeto para produção",
+      "id": "build",
+      "optional": false,
+    },
+    {
+      "command": "docker build -t react-vite:latest -f docker/Dockerfile .",
+      "description": "Constrói a imagem Docker do projeto",
+      "id": "docker-build",
+      "optional": false,
+    },
+    {
+      "command": "docker compose up -d",
+      "description": "Inicia os serviços em modo detached",
+      "id": "docker-up",
+      "optional": false,
+    },
+  ],
+}
+`;

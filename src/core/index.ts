@@ -4,6 +4,7 @@ import type { MigrationPlan } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult } from '../validator/types';
 import type { DeployState } from '../deploy/types';
+import type { ExecutionState } from '../executor/types';
 import type { ProjectContext } from './types';
 
 export type { ProjectContext, SourceInfo, ProjectMeta } from './types';
@@ -52,4 +53,9 @@ export function withMigration(ctx: ProjectContext, migration: MigrationResult): 
 /** Retorna novo contexto imutável com o resultado do deploy preenchido. */
 export function withDeploy(ctx: ProjectContext, deploy: DeployState): ProjectContext {
   return { ...ctx, deploy };
+}
+
+/** Retorna novo contexto imutável com o resultado da execução preenchido. */
+export function withExecution(ctx: ProjectContext, execution: ExecutionState): ProjectContext {
+  return { ...ctx, execution };
 }

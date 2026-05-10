@@ -14,6 +14,7 @@ import type {
 import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult, ValidationIssue } from '../validator/types';
 import type { DeployState } from '../deploy/types';
+import type { ExecutionState, ExecutionIssue as ExecIssue } from '../executor/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -455,6 +456,91 @@ function renderDeploy(state: DeployState): void {
   console.log('');
 }
 
+const READINESS_COLOR: Record<string, (s: string) => string> = {
+  'ready':               (s) => chalk.green.bold(s),
+  'ready-with-warnings': (s) => chalk.yellow.bold(s),
+  'blocked':             (s) => chalk.red.bold(s),
+};
+
+const READINESS_LABEL: Record<string, string> = {
+  'ready':               '✓ PRONTO para execução',
+  'ready-with-warnings': '⚠ PRONTO com avisos',
+  'blocked':             '✗ BLOQUEADO',
+};
+
+function renderExecIssue(issue: ExecIssue): void {
+  const colorFn = issue.severity === 'blocker' ? chalk.red.bold
+    : issue.severity === 'warning' ? chalk.yellow
+    : chalk.blue;
+  const label = issue.severity === 'blocker' ? 'BLOQUEADOR'
+    : issue.severity === 'warning' ? 'AVISO'
+    : 'INFO';
+  console.log(`  ${colorFn(`[${label}]`)} ${issue.message}`);
+  if (issue.suggestion) {
+    console.log(`    ${chalk.gray('→')} ${chalk.gray(issue.suggestion)}`);
+  }
+}
+
+function renderExecution(state: ExecutionState): void {
+  const W = 56;
+  const readiness = state.summary.readiness;
+  const headerColor = readiness === 'ready' ? chalk.bold.green
+    : readiness === 'ready-with-warnings' ? chalk.bold.yellow
+    : chalk.bold.red;
+
+  console.log('');
+  console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(headerColor(`  │${'  Executor — Pré-voo'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto',   chalk.white(state.projectName));
+  const colorFn = READINESS_COLOR[readiness] ?? ((s: string) => s);
+  row('Prontidão', colorFn(READINESS_LABEL[readiness] ?? readiness));
+
+  section('Ambiente');
+  const env = state.envCheck;
+  console.log(tick(env.nodeAvailable,           `Node.js ${env.nodeVersion ?? ''}`));
+  console.log(tick(env.dockerAvailable,         `Docker ${env.dockerVersion ?? ''}`));
+  console.log(tick(env.packageManagerAvailable, `${state.buildCheck.packageManager} ${env.packageManagerVersion ?? ''}`));
+
+  section('Artefatos Docker');
+  console.log(tick(state.dockerCheck.valid, 'Todos os arquivos Docker presentes'));
+  if (state.dockerCheck.missingFiles.length > 0) {
+    state.dockerCheck.missingFiles.forEach((f) =>
+      console.log(`    ${chalk.red('✗')}  ${chalk.gray(f)}`)
+    );
+  }
+
+  section('Build');
+  console.log(tick(state.buildCheck.hasBuildScript, `Script build: ${state.buildCheck.buildCommand ?? '—'}`));
+  console.log(tick(state.buildCheck.hasDevScript,   `Script dev:   ${state.buildCheck.devCommand ?? '—'}`));
+
+  if (state.plan.steps.length > 0) {
+    section('Plano de execução');
+    state.plan.steps.forEach((step, i) => {
+      console.log(`  ${chalk.gray(String(i + 1) + '.')} ${chalk.white(step.description)}`);
+      console.log(`     ${chalk.cyan(step.command)}`);
+    });
+  }
+
+  if (state.summary.blockers.length > 0) {
+    section('Bloqueadores');
+    state.summary.blockers.forEach(renderExecIssue);
+  }
+
+  if (state.summary.warnings.length > 0) {
+    section('Avisos');
+    state.summary.warnings.forEach(renderExecIssue);
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Executado em: ${state.executedAt}`));
+  console.log(chalk.gray(`  Plano: ${state.outputDir}/execution/execution-plan.json`));
+  console.log(chalk.gray(`  Dry-run: ${state.outputDir}/execution/dry-run.md`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -477,6 +563,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.deploy) {
       renderDeploy(ctx.deploy);
+    }
+
+    if (ctx.execution) {
+      renderExecution(ctx.execution);
     }
   }
 }

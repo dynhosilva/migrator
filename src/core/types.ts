@@ -4,6 +4,7 @@ import type { MigrationPlan } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult } from '../validator/types';
 import type { DeployState } from '../deploy/types';
+import type { ExecutionState } from '../executor/types';
 
 export interface SourceInfo {
   kind: SourceKind;
@@ -45,4 +46,7 @@ export interface ProjectContext {
 
   // Preenchido pela fase de deploy
   readonly deploy?: DeployState;
+
+  // Preenchido pela fase de execução (verificações de pré-voo + plano)
+  readonly execution?: ExecutionState;
 }
