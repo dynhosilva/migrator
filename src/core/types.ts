@@ -6,6 +6,7 @@ import type { ValidationResult } from '../validator/types';
 import type { DeployState } from '../deploy/types';
 import type { ExecutionState } from '../executor/types';
 import type { RuntimeState } from '../runtime/types';
+import type { RemoteState } from '../remote/types';
 
 export interface SourceInfo {
   kind: SourceKind;
@@ -53,4 +54,7 @@ export interface ProjectContext {
 
   // Preenchido pela fase de runtime (execução local real: install, build, docker)
   readonly runtime?: RuntimeState;
+
+  // Preenchido pela fase de remote (planejamento de deploy remoto — sem SSH real)
+  readonly remote?: RemoteState;
 }

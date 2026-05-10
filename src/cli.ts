@@ -9,6 +9,7 @@ import { migrateContext }  from './migrator';
 import { deployContext }   from './deploy';
 import { executeContext }  from './executor';
 import { runContext }      from './runtime';
+import { prepareContext }  from './remote';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -348,6 +349,75 @@ program
         : new TerminalRenderer();
 
       renderer.render(ran);
+    } catch (err) {
+      logger.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('remote <input>')
+  .description('Pipeline completo + planejamento de deploy remoto (sem SSH real, sem deploy real)')
+  .option('-v, --verbose', 'Habilita saída verbose')
+  .option('-o, --output <dir>', 'Diretório de saída (padrão: ./output/<projeto>)')
+  .option('-f, --format <format>', 'Formato de saída: terminal | json', 'terminal')
+  .option('--force', 'Prossegue mesmo com issues críticos de validação')
+  .option('--host <host>', 'Hostname ou IP do servidor remoto')
+  .option('--user <user>', 'Usuário SSH')
+  .option('--key <key>', 'Caminho para chave SSH')
+  .option('--remote-path <path>', 'Caminho no servidor remoto (padrão: /opt/app)')
+  .action(async (input: string, options: {
+    verbose?: boolean; output?: string; format?: string; force?: boolean;
+    host?: string; user?: string; key?: string; remotePath?: string;
+  }) => {
+    if (options.verbose) setVerbose(true);
+
+    try {
+      const source      = resolveSource(input);
+      const files       = await source.load();
+      const projectName = path.basename(input).replace(/\.zip$/i, '');
+      const outputDir   = options.output ?? path.join('output', projectName);
+
+      logger.info(`Fonte: ${source.describe()}`);
+      logger.info(`Saída: ${path.resolve(outputDir)}`);
+
+      const ctx       = createContext(source, input, projectName, files);
+      const analyzed  = analyzeContext(ctx);
+      const planned   = planContext(analyzed);
+      const validated = validateContext(planned);
+
+      if (!validated.validation?.safeToMigrate && !options.force) {
+        const count = validated.validation?.summary.criticalCount ?? 0;
+        logger.error(`Validação bloqueou o pipeline: ${count} issue(s) crítico(s) detectado(s).`);
+        logger.error('Use --force para prosseguir mesmo com issues críticos.');
+        const renderer = options.format === 'json' ? new JsonRenderer() : new TerminalRenderer();
+        renderer.render(validated);
+        process.exit(1);
+      }
+
+      if (options.force && !validated.validation?.safeToMigrate) {
+        logger.warn('--force ativado: prosseguindo com issues críticos de validação.');
+      }
+
+      const migrated = migrateContext(validated, outputDir);
+      const deployed = deployContext(migrated, outputDir);
+
+      const remoteOptions = {
+        sshConfig: {
+          ...(options.host ? { host: options.host } : {}),
+          ...(options.user ? { user: options.user } : {}),
+          ...(options.key  ? { keyPath: options.key } : {}),
+        },
+        remotePath: options.remotePath,
+      };
+
+      const planned2 = prepareContext(deployed, outputDir, remoteOptions);
+
+      const renderer = options.format === 'json'
+        ? new JsonRenderer()
+        : new TerminalRenderer();
+
+      renderer.render(planned2);
     } catch (err) {
       logger.error((err as Error).message);
       process.exit(1);

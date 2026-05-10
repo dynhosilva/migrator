@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ✅ Deploy v1 | `src/deploy/` | Gera artefatos Docker (Dockerfile, docker-compose.yml, .dockerignore) |
 | ✅ Execute v1 | `src/executor/` | Verifica ambiente + valida artefatos + gera plano de execução e dry-run |
 | ✅ Runtime v1 | `src/runtime/` | Execução local real: install, build, docker build + logs estruturados |
+| ✅ Remote v1 | `src/remote/` | Planejamento de deploy remoto — modelagem pura, sem SSH real |
 | 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
 
 Integrações externas planejadas: **Supabase** (migrations, auth, edge functions) e **Hostinger** (deploy de VPS).
@@ -64,9 +65,13 @@ resolveSource(input)
   → createContext()   → ProjectContext            (src/core/)
   → analyzeContext()  → ProjectContext + analysis (src/analyzer/)
   → planContext()     → ProjectContext + plan     (src/planner/)
-  → validateContext() → ProjectContext + validation (src/validator/)
-  → migrateContext()  → ProjectContext + migration (src/migrator/)
-  → renderer.render()                             (src/output/)
+  → validateContext()  → ProjectContext + validation (src/validator/)
+  → migrateContext()   → ProjectContext + migration (src/migrator/)
+  → deployContext()    → ProjectContext + deploy    (src/deploy/)
+  → executeContext()   → ProjectContext + execution (src/executor/)
+  → runContext()       → ProjectContext + runtime   (src/runtime/)
+  → prepareContext()   → ProjectContext + remote    (src/remote/)
+  → renderer.render()                              (src/output/)
 ```
 
 `ProjectContext` (`src/core/types.ts`) é a espinha dorsal imutável do pipeline. Cada fase recebe o contexto e retorna uma nova versão via spread com seu campo preenchido. **Nunca mutar o contexto — sempre criar novo via `{ ...ctx, novocampo }`**.
@@ -377,6 +382,76 @@ output/<project>/
 **`runContext(ctx, outputDir, projectDir?)`** — enriquece `ProjectContext` com `RuntimeState` via `withRuntime`.
 
 `projectDir` tem default `ctx.source.inputPath`. Em testes, passar cópia do fixture para não poluir os fixtures originais.
+
+Para adicionar nova task: criar arquivo em `tasks/`, registrar no registry em `index.ts`. Sem mais alterações.
+
+### Remote Registry (`src/remote/registry.ts`)
+
+O remote segue o mesmo padrão de registry, mas é **síncrono** (igual ao migrator/deploy/executor) — todas as tasks são pure modeling/planning sem I/O de rede.
+
+O `RemoteTaskContext` expõe `ctx`, `partial`, `outputDir` **e `config`** (`RemoteConfig`) — porque tasks como o `remote-execution-planner` precisam dos dados SSH e do caminho remoto.
+
+**Filosofia do remote v1:**
+- Nunca abre conexões SSH reais
+- Nunca executa comandos remotos ou deploya em produção
+- Nunca modifica arquivos do projeto original
+- Toda modelagem é baseada em `HostProfile` (simulado) e `SshConfig` (formato-only)
+
+**Modelos-chave:**
+
+- `HostProfile` — perfil simulado do host remoto (OS, Node.js, Docker, portas, disco). `DEFAULT_HOST_PROFILE`: Ubuntu 22.04, Docker disponível, Node v20, disco 20GB.
+- `SshConfig` — configuração SSH (host, porta, usuário, keyPath, authStrategy). Validação de **formato apenas** — sem conexão real.
+- `RemoteConfig` — config interna resolvida (sshConfig + hostProfile + remotePath) — separada da `RemoteOptions` do usuário.
+
+**Tasks registradas (em ordem de execução):**
+
+| Key | Arquivo | Responsabilidade |
+|---|---|---|
+| `hostCheck` | `tasks/host-compatibility-checker.ts` | Valida OS, Node ≥ 18, Docker, porta, disco ≥ 2GB |
+| `sshCheck` | `tasks/ssh-config-validator.ts` | Valida formato SSH (hostname, porta, usuário, keyPath) |
+| `transferPlan` | `tasks/transfer-planner.ts` | Lista arquivos a transferir com tamanhos estimados |
+| `deploymentCheck` | `tasks/deployment-strategy-checker.ts` | Valida estratégia vs. capacidades do host |
+| `executionPlan` | `tasks/remote-execution-planner.ts` | Gera remote-execution-plan.json com 5 passos ordenados |
+| `dryRun` | `tasks/remote-dry-run-generator.ts` | Gera remote-dry-run.md (preview humano) |
+| `summary` | `tasks/remote-summary-builder.ts` | Gera remote-summary.md com status e próximos passos |
+
+**`RemoteReadiness`:** `'ready'` | `'ready-with-warnings'` | `'blocked'`
+
+**`RemoteIssueSeverity`:** `'blocker'` | `'warning'` | `'info'`
+
+**Passos do execution plan (fixos, sempre gerados):**
+1. `create-remote-dirs` (remoto, risco baixo) — `mkdir -p` no servidor
+2. `transfer-files` (local, risco médio) — `rsync` dos artefatos
+3. `docker-build-remote` (remoto, risco médio) — `docker build` no servidor
+4. `docker-compose-up` (remoto, risco alto) — `docker compose up -d`
+5. `verify-health` (remoto, risco baixo) — `curl` no localhost
+
+**Estrutura de saída gerada:**
+```
+output/<project>/
+└── remote/
+    ├── remote-execution-plan.json  ← passos ordenados com comandos SSH reais
+    ├── remote-dry-run.md           ← preview legível sem execução
+    └── remote-summary.md           ← status e próximos passos
+```
+
+**`prepareRemote(ctx, outputDir, options?)`** — executa registry (puro) → coleta arquivos → escreve → computa readiness.
+**`prepareContext(ctx, outputDir, options?)`** — enriquece `ProjectContext` com `RemoteState` via `withRemote`.
+
+`RemoteOptions` aceita: `sshConfig`, `hostProfile`, `remotePath`. Defaults usados quando não fornecido.
+
+**O que o Remote v1 NUNCA faz:**
+- Abrir SSH real ou executar comandos remotos
+- Subir containers ou fazer deploy em produção
+- Modificar arquivos do projeto original
+- Testar conectividade real (ping, handshake, etc.)
+
+**O que o Remote v1 faz:**
+- Validar perfil do host (baseado em dados fornecidos/padrão)
+- Validar formato da configuração SSH
+- Planejar lista de arquivos a transferir
+- Gerar plano de execução com comandos SSH prontos
+- Gerar preview do deploy para revisão humana
 
 Para adicionar nova task: criar arquivo em `tasks/`, registrar no registry em `index.ts`. Sem mais alterações.
 

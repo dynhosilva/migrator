@@ -19,6 +19,8 @@ import { migrateContext }  from '../../src/migrator';
 import { deployContext }   from '../../src/deploy';
 import { executeContext }  from '../../src/executor';
 import { runContext }      from '../../src/runtime';
+import { prepareContext }  from '../../src/remote';
+import type { RemoteOptions } from '../../src/remote/types';
 import type { ProjectContext } from '../../src/core/types';
 
 /** Caminho absoluto para o diretório de fixtures. */
@@ -120,4 +122,20 @@ export async function runRuntimePipeline(
 ): Promise<ProjectContext> {
   const executed = await runExecutePipeline(name, outputDir, force);
   return runContext(executed, outputDir, projectDir);
+}
+
+/**
+ * Executa o pipeline completo incluindo a fase de remote:
+ * analyze → plan → validate → migrate → deploy → remote.
+ *
+ * Não abre SSH real nem deploya em produção — apenas modela o planejamento.
+ */
+export async function runRemotePipeline(
+  name: string,
+  outputDir: string,
+  options?: RemoteOptions,
+  force = false,
+): Promise<ProjectContext> {
+  const deployed = await runPipeline(name, outputDir, force);
+  return prepareContext(deployed, outputDir, options);
 }

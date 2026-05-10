@@ -6,6 +6,7 @@ import type { ValidationResult } from '../validator/types';
 import type { DeployState } from '../deploy/types';
 import type { ExecutionState } from '../executor/types';
 import type { RuntimeState } from '../runtime/types';
+import type { RemoteState } from '../remote/types';
 import type { ProjectContext } from './types';
 
 export type { ProjectContext, SourceInfo, ProjectMeta } from './types';
@@ -64,4 +65,9 @@ export function withExecution(ctx: ProjectContext, execution: ExecutionState): P
 /** Retorna novo contexto imutável com o resultado do runtime preenchido. */
 export function withRuntime(ctx: ProjectContext, runtime: RuntimeState): ProjectContext {
   return { ...ctx, runtime };
+}
+
+/** Retorna novo contexto imutável com o resultado do remote preenchido. */
+export function withRemote(ctx: ProjectContext, remote: RemoteState): ProjectContext {
+  return { ...ctx, remote };
 }

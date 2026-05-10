@@ -3,7 +3,7 @@ export { resolveSource, LocalFolderSource, ZipSource, GitHubSource, DEFAULT_IGNO
 export type { ProjectFile, ProjectSource, SourceKind, IgnoreRule } from './sources';
 
 // Core — espinha dorsal do pipeline
-export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime } from './core';
+export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime, withRemote } from './core';
 export type { ProjectContext, SourceInfo, ProjectMeta } from './core';
 
 // Analyzer
@@ -102,6 +102,28 @@ export type {
   RuntimeReadiness,
   RuntimeIssueSeverity,
 } from './runtime';
+
+// Remote
+export { prepareRemote, prepareContext, DEFAULT_HOST_PROFILE, mergeHostProfile, DEFAULT_SSH_CONFIG, mergeSshConfig } from './remote';
+export type {
+  RemoteState,
+  RemoteOptions,
+  RemoteConfig,
+  RemoteReadiness,
+  HostProfile,
+  SshConfig,
+  HostCompatibilityResult,
+  SshValidationResult,
+  TransferPlanResult,
+  TransferFile,
+  DeploymentStrategyResult,
+  RemoteExecutionPlanArtifacts,
+  RemoteDryRunArtifacts,
+  RemoteSummaryArtifacts,
+  RemoteIssue,
+  RemoteIssueSeverity,
+  RemoteStep,
+} from './remote';
 
 // Output — renderização desacoplada
 export { TerminalRenderer, JsonRenderer } from './output';

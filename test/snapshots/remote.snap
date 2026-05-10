@@ -1,0 +1,151 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Remote — Pipeline completo (react-vite) > remote-dry-run.md corresponde ao snapshot 1`] = `
+"# Dry-run — Deploy Remoto: react-vite
+
+> **Atenção:** Este documento é apenas um preview. Nenhuma ação real foi executada.
+
+## Configuração
+
+| Campo | Valor |
+|---|---|
+| Servidor | \`your-server.example.com:22\` |
+| Usuário SSH | \`ubuntu\` |
+| Autenticação | \`key\` |
+| Chave SSH | \`~/.ssh/id_rsa\` |
+| Caminho remoto | \`/opt/app\` |
+| Sistema operacional | ubuntu 22.04 |
+| Docker no host | Disponível |
+| Espaço em disco | 20GB |
+
+## Validação do ambiente
+
+- Host compatível: **Sim**
+- Configuração SSH válida: **Sim**
+- Estratégia de deploy: **static**
+- Deploy compatível com o host: **Sim**
+
+## Arquivos a transferir
+
+Total estimado: **11KB**
+
+- \`docker/Dockerfile\` → \`/opt/app/docker/Dockerfile\` (~2KB)
+- \`docker/docker-compose.yml\` → \`/opt/app/docker/docker-compose.yml\` (~1KB)
+- \`docker/.dockerignore\` → \`/opt/app/docker/.dockerignore\` (~1KB)
+- \`env/.env.example\` → \`/opt/app/env/.env.example\` (~1KB)
+- \`env/.env.production.example\` → \`/opt/app/env/.env.production.example\` (~1KB)
+- \`reports/migration-summary.json\` → \`/opt/app/reports/migration-summary.json\` (~5KB)
+
+## Passos de execução
+
+### Passo 1: Cria estrutura de diretórios no servidor remoto
+
+- **Execução:** Servidor remoto
+- **Risco:** baixo
+
+\`\`\`bash
+ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "mkdir -p /opt/app/docker /opt/app/env"
+\`\`\`
+
+### Passo 2: Transfere 6 arquivo(s) para o servidor remoto
+
+- **Execução:** Máquina local
+- **Risco:** MÉDIO
+- **Requer:** create-remote-dirs
+
+\`\`\`bash
+rsync -avz -e "ssh -i ~/.ssh/id_rsa" docker/Dockerfile docker/docker-compose.yml docker/.dockerignore env/.env.example env/.env.production.example reports/migration-summary.json ubuntu@your-server.example.com:/opt/app/
+\`\`\`
+
+### Passo 3: Constrói imagem Docker no servidor remoto
+
+- **Execução:** Servidor remoto
+- **Risco:** MÉDIO
+- **Requer:** transfer-files
+
+\`\`\`bash
+ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "cd /opt/app && docker build -f docker/Dockerfile -t react-vite:latest ."
+\`\`\`
+
+### Passo 4: Inicia os containers via Docker Compose
+
+- **Execução:** Servidor remoto
+- **Risco:** ALTO
+- **Requer:** docker-build-remote
+
+\`\`\`bash
+ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "cd /opt/app && docker compose -f docker/docker-compose.yml up -d"
+\`\`\`
+
+### Passo 5: Verifica que a aplicação está respondendo na porta esperada
+
+- **Execução:** Servidor remoto
+- **Risco:** baixo
+- **Requer:** docker-compose-up
+
+\`\`\`bash
+ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "curl -sf http://localhost:80/ && echo OK"
+\`\`\`
+
+---
+
+_Gerado em: <TIMESTAMP>_"
+`;
+
+exports[`Remote — Pipeline completo (react-vite) > remote-execution-plan.json corresponde ao snapshot 1`] = `
+{
+  "generatedAt": "<TIMESTAMP>",
+  "projectName": "react-vite",
+  "remotePath": "/opt/app",
+  "steps": [
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "mkdir -p /opt/app/docker /opt/app/env"",
+      "description": "Cria estrutura de diretórios no servidor remoto",
+      "id": "create-remote-dirs",
+      "remote": true,
+      "risk": "low",
+    },
+    {
+      "command": "rsync -avz -e "ssh -i ~/.ssh/id_rsa" docker/Dockerfile docker/docker-compose.yml docker/.dockerignore env/.env.example env/.env.production.example reports/migration-summary.json ubuntu@your-server.example.com:/opt/app/",
+      "description": "Transfere 6 arquivo(s) para o servidor remoto",
+      "id": "transfer-files",
+      "remote": false,
+      "requires": [
+        "create-remote-dirs",
+      ],
+      "risk": "medium",
+    },
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "cd /opt/app && docker build -f docker/Dockerfile -t react-vite:latest ."",
+      "description": "Constrói imagem Docker no servidor remoto",
+      "id": "docker-build-remote",
+      "remote": true,
+      "requires": [
+        "transfer-files",
+      ],
+      "risk": "medium",
+    },
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "cd /opt/app && docker compose -f docker/docker-compose.yml up -d"",
+      "description": "Inicia os containers via Docker Compose",
+      "id": "docker-compose-up",
+      "remote": true,
+      "requires": [
+        "docker-build-remote",
+      ],
+      "risk": "high",
+    },
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "curl -sf http://localhost:80/ && echo OK"",
+      "description": "Verifica que a aplicação está respondendo na porta esperada",
+      "id": "verify-health",
+      "remote": true,
+      "requires": [
+        "docker-compose-up",
+      ],
+      "risk": "low",
+    },
+  ],
+  "userHost": "ubuntu@your-server.example.com",
+}
+`;

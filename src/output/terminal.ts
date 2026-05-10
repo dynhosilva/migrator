@@ -16,6 +16,7 @@ import type { ValidationResult, ValidationIssue } from '../validator/types';
 import type { DeployState } from '../deploy/types';
 import type { ExecutionState, ExecutionIssue as ExecIssue } from '../executor/types';
 import type { RuntimeState, RuntimeIssue as RtIssue } from '../runtime/types';
+import type { RemoteState, RemoteIssue as RmIssue } from '../remote/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -628,6 +629,104 @@ function renderRuntime(state: RuntimeState): void {
   console.log('');
 }
 
+const REMOTE_READINESS_COLOR: Record<string, (s: string) => string> = {
+  'ready':               (s) => chalk.green.bold(s),
+  'ready-with-warnings': (s) => chalk.yellow.bold(s),
+  'blocked':             (s) => chalk.red.bold(s),
+};
+
+const REMOTE_READINESS_LABEL: Record<string, string> = {
+  'ready':               '✓ PRONTO para deploy',
+  'ready-with-warnings': '⚠ PRONTO com avisos',
+  'blocked':             '✗ BLOQUEADO',
+};
+
+function renderRmIssue(issue: RmIssue): void {
+  const colorFn = issue.severity === 'blocker' ? chalk.red.bold
+    : issue.severity === 'warning' ? chalk.yellow
+    : chalk.blue;
+  const label = issue.severity === 'blocker' ? 'BLOQUEADOR'
+    : issue.severity === 'warning' ? 'AVISO'
+    : 'INFO';
+  console.log(`  ${colorFn(`[${label}]`)} ${issue.message}`);
+  if (issue.suggestion) {
+    console.log(`    ${chalk.gray('→')} ${chalk.gray(issue.suggestion)}`);
+  }
+}
+
+function renderRemote(state: RemoteState): void {
+  const W = 56;
+  const readiness = state.readiness;
+  const headerColor = readiness === 'ready' ? chalk.bold.green
+    : readiness === 'ready-with-warnings' ? chalk.bold.yellow
+    : chalk.bold.red;
+
+  console.log('');
+  console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(headerColor(`  │${'  Remote — Planejamento de Deploy'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto',   chalk.white(state.projectName));
+  const colorFn = REMOTE_READINESS_COLOR[readiness] ?? ((s: string) => s);
+  row('Prontidão', colorFn(REMOTE_READINESS_LABEL[readiness] ?? readiness));
+
+  section('Servidor remoto');
+  row('Host',         chalk.white(`${state.sshCheck.config.host}:${state.sshCheck.config.port}`));
+  row('Usuário',      chalk.white(state.sshCheck.config.user));
+  row('Caminho',      chalk.white(state.remotePath));
+  row('OS do host',   chalk.white(`${state.hostCheck.profile.os} ${state.hostCheck.profile.osVersion}`));
+  row('Docker',       state.hostCheck.profile.dockerAvailable ? chalk.green('disponível') : chalk.red('não disponível'));
+  row('Disco',        chalk.white(`${state.hostCheck.profile.diskSpaceGB}GB`));
+
+  section('Compatibilidade');
+  console.log(tick(state.hostCheck.compatible,       'Host compatível'));
+  console.log(tick(state.sshCheck.valid,             'Configuração SSH válida'));
+  console.log(tick(state.deploymentCheck.compatible, `Estratégia: ${state.deploymentCheck.strategy}`));
+
+  section('Transferência');
+  row('Arquivos',  chalk.white(String(state.transferPlan.files.length)));
+  row('Tamanho',   chalk.white(`~${state.transferPlan.totalEstimatedSizeKB}KB`));
+
+  if (state.executionPlan.steps.length > 0) {
+    section('Plano de execução');
+    state.executionPlan.steps.forEach((step, i) => {
+      const loc = step.remote ? chalk.blue('[remoto]') : chalk.cyan('[local]');
+      console.log(`  ${chalk.gray(String(i + 1) + '.')} ${loc} ${chalk.white(step.description)}`);
+    });
+  }
+
+  const allBlockers: RmIssue[] = [
+    ...(state.hostCheck.issues.filter((i) => i.severity === 'blocker')),
+    ...(state.sshCheck.issues.filter((i) => i.severity === 'blocker')),
+    ...(state.transferPlan.issues.filter((i) => i.severity === 'blocker')),
+    ...(state.deploymentCheck.issues.filter((i) => i.severity === 'blocker')),
+  ];
+  const allWarnings: RmIssue[] = [
+    ...(state.hostCheck.issues.filter((i) => i.severity === 'warning')),
+    ...(state.sshCheck.issues.filter((i) => i.severity === 'warning')),
+    ...(state.transferPlan.issues.filter((i) => i.severity === 'warning')),
+    ...(state.deploymentCheck.issues.filter((i) => i.severity === 'warning')),
+  ];
+
+  if (allBlockers.length > 0) {
+    section('Bloqueadores');
+    allBlockers.forEach(renderRmIssue);
+  }
+
+  if (allWarnings.length > 0) {
+    section('Avisos');
+    allWarnings.forEach(renderRmIssue);
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Preparado em: ${state.preparedAt}`));
+  console.log(chalk.gray(`  Plano: ${state.outputDir}/remote/remote-execution-plan.json`));
+  console.log(chalk.gray(`  Dry-run: ${state.outputDir}/remote/remote-dry-run.md`));
+  console.log(chalk.gray(`  Sumário: ${state.outputDir}/remote/remote-summary.md`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -658,6 +757,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.runtime) {
       renderRuntime(ctx.runtime);
+    }
+
+    if (ctx.remote) {
+      renderRemote(ctx.remote);
     }
   }
 }

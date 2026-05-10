@@ -16,6 +16,7 @@ export class JsonRenderer implements Renderer {
     if (ctx.deploy)     output['deploy']     = ctx.deploy;
     if (ctx.execution)  output['execution']  = ctx.execution;
     if (ctx.runtime)    output['runtime']    = ctx.runtime;
+    if (ctx.remote)     output['remote']     = ctx.remote;
     console.log(JSON.stringify(output, null, 2));
   }
 }
