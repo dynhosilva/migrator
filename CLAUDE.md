@@ -133,6 +133,24 @@ Toda nova fase (planner, migrator, deploy, sync) segue este padrão obrigatório
 - **Detectores independentes** — cada detector em `src/analyzer/detectors/` não deve importar de outro detector. Dependências entre resultados passam por `ctx.partial`, nunca por import direto.
 - **Renderers sem lógica de negócio** — implementações de `Renderer` em `src/output/` só formatam e exibem. Decisões sobre o que mostrar pertencem ao domínio, não ao renderer.
 
+## Issues conhecidas / TODOs técnicos
+
+### Self-analysis contamination no detector de rotas
+
+**Arquivo:** `src/analyzer/detectors/routes.ts`
+
+**Problema:** o detector usa regex para encontrar padrões de rota (`/path`, `<Route path=...`) no código-fonte. Ao analisar o próprio repositório da engine, detecta padrões dentro do seu próprio código como se fossem rotas da aplicação.
+
+**Evidência:** `npm run dev -- analyze .` retorna `/` e `/rota` como rotas detectadas, ambas apontando para `src/analyzer/detectors/routes.ts`.
+
+**Soluções candidatas (não implementadas):**
+- Restringir a detecção apenas a arquivos de app conhecidos (`src/App.tsx`, `src/main.tsx`, `pages/`, `app/`)
+- Ignorar arquivos dentro de `src/analyzer/` durante a detecção de rotas
+- Substituir regex por AST parsing para maior precisão
+- Limitar detecção apenas quando framework é conhecido (não `unknown`)
+
+**Impacto atual:** baixo — só afeta análise do próprio workspace da engine. Projetos Lovable reais não têm esse problema.
+
 ## O que NÃO fazer
 
 - Não passar `ProjectFile[]` diretamente entre módulos de alto nível — usar `ProjectContext`.
