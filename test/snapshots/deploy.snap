@@ -1,0 +1,317 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Deploy artifacts — react-vite (static + npm) > .dockerignore corresponde ao snapshot 1`] = `
+"# Dependências
+node_modules
+
+# Artefatos de build
+dist
+build
+
+# Controle de versão
+.git
+.gitignore
+
+# Variáveis de ambiente (nunca incluir no container)
+.env
+.env.*
+!.env.example
+
+# Logs e temporários
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cobertura de testes e CI
+coverage
+.nyc_output
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+"
+`;
+
+exports[`Deploy artifacts — react-vite (static + npm) > DeployState normalizado corresponde ao snapshot 1`] = `
+{
+  "deployedAt": "<TIMESTAMP>",
+  "docker": {
+    "baseImage": "nginx:alpine",
+    "exposedPort": 80,
+    "files": [
+      {
+        "content": "# syntax=docker/dockerfile:1
+# Stage 1: build
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: serve com nginx
+FROM nginx:alpine AS runner
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+",
+        "description": "Dockerfile multi-estágio otimizado para produção",
+        "relativePath": "docker/Dockerfile",
+      },
+      {
+        "content": "version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    restart: unless-stopped
+",
+        "description": "docker-compose.yml para deploy em ambiente de produção",
+        "relativePath": "docker/docker-compose.yml",
+      },
+      {
+        "content": "# Dependências
+node_modules
+
+# Artefatos de build
+dist
+build
+
+# Controle de versão
+.git
+.gitignore
+
+# Variáveis de ambiente (nunca incluir no container)
+.env
+.env.*
+!.env.example
+
+# Logs e temporários
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cobertura de testes e CI
+coverage
+.nyc_output
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+",
+        "description": ".dockerignore para excluir arquivos desnecessários da imagem",
+        "relativePath": "docker/.dockerignore",
+      },
+      {
+        "content": "# Docker — react-vite
+
+> Estratégia: **Hosting Estático (nginx)** | Framework: **react** | Porta: **80**
+
+## Pré-requisitos
+
+- [Docker](https://docs.docker.com/get-docker/) >= 24
+- [Docker Compose](https://docs.docker.com/compose/) >= 2.0
+
+## Como usar
+
+### 1. Copie os arquivos para a raiz do projeto
+
+\`\`\`bash
+# Na raiz do seu projeto:
+cp <output>/docker/Dockerfile .
+cp <output>/docker/docker-compose.yml .
+cp <output>/docker/.dockerignore .dockerignore
+\`\`\`
+
+### 2. Configure as variáveis de ambiente
+
+\`\`\`bash
+cp <output>/env/.env.example .env
+# Edite .env com os valores reais
+\`\`\`
+
+Variáveis obrigatórias:
+- \`VITE_API_URL\`
+- \`VITE_APP_TITLE\`
+
+### 3. Build e execução
+
+\`\`\`bash
+# Build e iniciar (modo detach)
+docker compose up -d --build
+
+# Ver logs
+docker compose logs -f app
+
+# Parar
+docker compose down
+\`\`\`
+
+A aplicação estará disponível em: **http://localhost:80**
+
+## Build manual (sem Compose)
+
+\`\`\`bash
+docker build -t react-vite .
+docker run -p 80:80 --env-file .env react-vite
+\`\`\`
+
+## Detalhes do Dockerfile
+
+- **Build system**: \`npm ci\` → \`build\`
+- **Imagem base**: \`nginx:alpine\`
+- **Porta exposta**: 80
+- **Multi-stage build**: sim (otimiza tamanho da imagem final)
+
+---
+*Gerado pelo lovable-migrate — engine de migração para projetos Lovable.dev*
+",
+        "description": "README com instruções de uso dos artefatos Docker",
+        "relativePath": "docker/README.md",
+      },
+    ],
+    "multiStage": true,
+    "strategy": "static",
+  },
+  "outputDir": "<OUTPUT_DIR>",
+  "projectName": "react-vite",
+  "report": {
+    "deployTarget": "static",
+    "files": [
+      {
+        "content": "{
+  "generatedAt": "<TIMESTAMP>",
+  "projectName": "react-vite",
+  "deployTarget": "static",
+  "framework": "react",
+  "packageManager": "npm",
+  "docker": {
+    "baseImage": "nginx:alpine",
+    "exposedPort": 80,
+    "multiStage": true,
+    "filesGenerated": [
+      {
+        "path": "docker/Dockerfile",
+        "description": "Dockerfile multi-estágio otimizado para produção"
+      },
+      {
+        "path": "docker/docker-compose.yml",
+        "description": "docker-compose.yml para deploy em ambiente de produção"
+      },
+      {
+        "path": "docker/.dockerignore",
+        "description": ".dockerignore para excluir arquivos desnecessários da imagem"
+      },
+      {
+        "path": "docker/README.md",
+        "description": "README com instruções de uso dos artefatos Docker"
+      }
+    ]
+  },
+  "notes": [
+    "Configure 2 variável(is) de ambiente antes do primeiro deploy."
+  ],
+  "totalFilesGenerated": 5
+}",
+        "description": "Relatório de deploy com metadados dos artefatos Docker gerados",
+        "relativePath": "docker/deploy-report.json",
+      },
+    ],
+    "notes": [
+      "Configure 2 variável(is) de ambiente antes do primeiro deploy.",
+    ],
+    "totalFilesGenerated": 5,
+  },
+}
+`;
+
+exports[`Deploy artifacts — react-vite (static + npm) > Dockerfile completo corresponde ao snapshot 1`] = `
+"# syntax=docker/dockerfile:1
+# Stage 1: build
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: serve com nginx
+FROM nginx:alpine AS runner
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+"
+`;
+
+exports[`Deploy artifacts — react-vite (static + npm) > deploy-report.json normalizado corresponde ao snapshot 1`] = `
+{
+  "deployTarget": "static",
+  "docker": {
+    "baseImage": "nginx:alpine",
+    "exposedPort": 80,
+    "filesGenerated": [
+      {
+        "description": "Dockerfile multi-estágio otimizado para produção",
+        "path": "docker/Dockerfile",
+      },
+      {
+        "description": "docker-compose.yml para deploy em ambiente de produção",
+        "path": "docker/docker-compose.yml",
+      },
+      {
+        "description": ".dockerignore para excluir arquivos desnecessários da imagem",
+        "path": "docker/.dockerignore",
+      },
+      {
+        "description": "README com instruções de uso dos artefatos Docker",
+        "path": "docker/README.md",
+      },
+    ],
+    "multiStage": true,
+  },
+  "framework": "react",
+  "generatedAt": "<TIMESTAMP>",
+  "notes": [
+    "Configure 2 variável(is) de ambiente antes do primeiro deploy.",
+  ],
+  "packageManager": "npm",
+  "projectName": "react-vite",
+  "totalFilesGenerated": 5,
+}
+`;
+
+exports[`Deploy artifacts — react-vite (static + npm) > docker-compose.yml corresponde ao snapshot 1`] = `
+"version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    restart: unless-stopped
+"
+`;

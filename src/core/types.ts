@@ -3,6 +3,7 @@ import type { AnalysisReport } from '../analyzer/types';
 import type { MigrationPlan } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult } from '../validator/types';
+import type { DeployState } from '../deploy/types';
 
 export interface SourceInfo {
   kind: SourceKind;
@@ -42,6 +43,6 @@ export interface ProjectContext {
   // Preenchido pela fase de migração
   readonly migration?: MigrationResult;
 
-  // Fases futuras (não implementadas — reservado para extensão):
-  // readonly deploy?: DeployState;
+  // Preenchido pela fase de deploy
+  readonly deploy?: DeployState;
 }

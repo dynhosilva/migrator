@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ✅ Plan | `src/planner/` | Gera `MigrationPlan` a partir do `AnalysisReport` via registry de strategies |
 | ✅ Validate | `src/validator/` | Valida plano e análise — bloqueia migrações inseguras ou incompletas |
 | ✅ Migrate v1 | `src/migrator/` | Gera artefatos filesystem (env, migrations, instruções, relatório) |
-| 🔲 Deploy | `src/deploy/` | Empacota e envia (Hostinger, Docker) |
+| ✅ Deploy v1 | `src/deploy/` | Gera artefatos Docker (Dockerfile, docker-compose.yml, .dockerignore) |
 | 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
 
 Integrações externas planejadas: **Supabase** (migrations, auth, edge functions) e **Hostinger** (deploy de VPS).
@@ -208,6 +208,54 @@ O `MigrationResult` foi projetado como contrato para versões futuras:
 - `report.checklist[].done: false` → migrator v2 pode marcar itens como concluídos ao executar
 - `deployInstructions.files` → base para geração de scripts shell/CI executáveis
 
+### Deploy Registry (`src/deploy/registry.ts`)
+
+O deployer segue o mesmo padrão do migrator. O `DeployerRegistry` executa tasks em sequência, acumulando `Partial<DeployState>`.
+
+**Tasks registradas (em ordem de execução):**
+
+| Key | Responsabilidade |
+|---|---|
+| `docker` | Gera todos os artefatos Docker: `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `docker/README.md` |
+| `report` | Gera `docker/deploy-report.json` — depende de `partial.docker` |
+
+**Estrutura de saída gerada** (dentro do mesmo `outputDir` do migrator):
+```
+output/<project>/
+└── docker/
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── .dockerignore
+    ├── README.md
+    └── deploy-report.json
+```
+
+**Geração do Dockerfile por estratégia de deploy:**
+- `static` (React/Vue/Svelte + Vite/CRA): multi-estágio `node:18-alpine` → `nginx:alpine`, serve `dist/` ou `build/` na porta 80
+- `node-server` (Next.js): multi-estágio 3-fases deps/builder/runner com `node:18-alpine`, porta 3000
+- `docker` / `unknown`: multi-estágio genérico `node:18-alpine`, porta 3000
+
+O Dockerfile adapta os comandos de instalação e build ao package manager detectado (`npm`, `yarn`, `pnpm`, `bun`).
+
+**`deployProject(ctx, outputDir)`** — executa registry (puro) → coleta arquivos → escreve via `writeGeneratedFiles` (mesmo writer do migrator).
+**`deployContext(ctx, outputDir)`** — enriquece `ProjectContext` com `DeployState` via `withDeploy`.
+
+O `deploy` command executa o pipeline completo: analyze → plan → validate → migrate → deploy.
+
+**O que o Deploy v1 NUNCA faz:**
+- Executar `docker build` ou `docker push`
+- Fazer login em registries (Docker Hub, GHCR, etc.)
+- Publicar imagens ou fazer deploy em produção
+- Modificar arquivos do projeto original
+
+**O que o Deploy v1 faz:**
+- Gerar `Dockerfile` multi-estágio otimizado para o framework detectado
+- Gerar `docker-compose.yml` com porta e env_file corretos
+- Gerar `.dockerignore` com exclusões adequadas ao framework
+- Gerar `docker/README.md` com instruções de uso
+
+Para adicionar nova task: criar arquivo em `tasks/`, registrar no registry em `index.ts`. Sem mais alterações.
+
 ### Validator Registry (`src/validator/registry.ts`)
 
 O validator segue o mesmo padrão de registry, mas com `ValidationRule` em vez de `Strategy`/`MigrationTask`. Cada rule recebe o `ProjectContext` completo (com `analysis` e `plan` preenchidos) e retorna `ValidationIssue[]`.
@@ -321,6 +369,72 @@ Toda nova fase (migrator, deploy, sync) segue este padrão obrigatório:
 - Limitar detecção apenas quando framework é conhecido (não `unknown`)
 
 **Impacto atual:** baixo — só afeta análise do próprio workspace da engine. Projetos Lovable reais não têm esse problema.
+
+## Infraestrutura de testes
+
+**Runner:** Vitest. Scripts disponíveis:
+```bash
+npm test               # executa todos os testes (CI)
+npm run test:watch     # modo interativo (desenvolvimento)
+npm run test:snapshots # atualiza snapshots após mudança intencional de output
+npm run typecheck:test # type-check dos arquivos de teste (exclui fixtures)
+```
+
+### Estrutura
+
+```
+test/
+├── fixtures/              # Projetos-exemplo estáticos (somente leitura nos testes)
+│   ├── react-vite/        # React + Vite + npm + env vars (framework bem detectado)
+│   ├── minimal-js/        # JS mínimo, framework unknown (testa validação crítica)
+│   ├── broken-project/    # Sem package.json (testa PACKAGE_JSON_MISSING)
+│   └── supabase-project/  # React + Vite + Supabase + migrations + edge function
+├── helpers/
+│   ├── normalize.ts       # normalizeOutput(), normalizeTimestamps(), normalizePaths()
+│   └── pipeline.ts        # loadFixture(), runAnalysis(), runValidation(), runPipeline()
+├── integration/           # Testes de integração do pipeline
+│   ├── pipeline.test.ts   # Pipeline completo end-to-end (5 asserts por fixture)
+│   ├── analysis.test.ts   # AnalysisReport + snapshots por fixture
+│   ├── validator.test.ts  # Comportamento de bloqueio e classificação de issues
+│   ├── migration.test.ts  # MigrationResult + migration-summary.json snapshot
+│   └── deploy.test.ts     # Dockerfile, docker-compose, .dockerignore + snapshots
+└── snapshots/             # Snapshots centralizados (gerenciados pelo Vitest)
+    ├── analysis.snap
+    ├── deploy.snap
+    └── migration.snap
+```
+
+### Filosofia de snapshots
+
+Snapshots protegem saídas textuais determinísticas contra regressão silenciosa. Antes de snapshottar, todo output passa por `normalizeOutput()` que remove:
+- **Timestamps ISO** (`detectedAt`, `generatedAt`, etc.) → `<TIMESTAMP>`
+- **Paths absolutos** do fixture dir → `<FIXTURE_DIR>`
+- **Paths absolutos** do output dir → `<OUTPUT_DIR>`
+- **Separadores Windows** (backslash → forward slash)
+
+Isso garante que os snapshots sejam **multiplataforma** e **determinísticos entre execuções**.
+
+Conteúdo de arquivos gerados (Dockerfile, docker-compose.yml, .dockerignore) não contém timestamps nem paths, portanto é snapshot sem normalização.
+
+### Regras de testes
+
+- **Fixtures são somente leitura** — nenhum teste escreve em `test/fixtures/`
+- **Output sempre em `os.tmpdir()`** — usando `makeTempDir()` + `removeTempDir()` em `afterAll`
+- **Sem internet** — nenhum teste faz chamada de rede ou API externa
+- **Sem Docker instalado** — testes validam conteúdo dos artefatos, não execução
+- **Sem side effects globais** — cada suite de teste é independente
+
+### Fixtures — contrato mínimo
+
+| Fixture | Framework | package.json | Env vars | Supabase |
+|---|---|---|---|---|
+| `react-vite` | react + vite | ✓ | VITE_API_URL, VITE_APP_TITLE | ✗ |
+| `minimal-js` | unknown | ✓ | APP_GREETING | ✗ |
+| `broken-project` | unknown | ✗ | — | ✗ |
+| `supabase-project` | react + vite | ✓ | VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY | ✓ (1 migration, 1 edge fn) |
+
+Para adicionar novo fixture: criar diretório em `test/fixtures/`, não adicionar a `.gitignore`.
+Para adicionar novo teste de snapshot: usar `normalizeOutput()` antes de `toMatchSnapshot()`.
 
 ## O que NÃO fazer
 

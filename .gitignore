@@ -4,10 +4,11 @@ dist/
 .env
 *.log
 
-# Workspace artifacts — projetos de exemplo, teste e fixtures locais.
-# Esses diretórios não fazem parte da engine e não devem ser versionados.
-strat-forge-pro/
-test/
-teste/
-examples/
-fixtures/
+# Output de migração gerado em runtime — nunca versionar
+output/
+
+# Workspace artifacts externos — projetos de exemplo locais (raiz apenas)
+/strat-forge-pro/
+/teste/
+/examples/
+/fixtures/

@@ -13,6 +13,7 @@ import type {
 } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult, ValidationIssue } from '../validator/types';
+import type { DeployState } from '../deploy/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -417,6 +418,43 @@ function renderValidation(result: ValidationResult): void {
   console.log('');
 }
 
+function renderDeploy(state: DeployState): void {
+  const W = 56;
+  console.log('');
+  console.log(chalk.bold.blue(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(chalk.bold.blue(`  │${'  Artefatos Docker'.padEnd(W - 2)}│`));
+  console.log(chalk.bold.blue(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto',    chalk.white(state.projectName));
+  row('Estratégia', chalk.white(state.docker.strategy));
+  row('Imagem base', chalk.white(state.docker.baseImage));
+  row('Porta',      chalk.white(String(state.docker.exposedPort)));
+
+  section('Arquivos gerados');
+  for (const f of state.docker.files) {
+    console.log(`  ${chalk.blue('✓')}  ${chalk.white(f.relativePath)} ${chalk.gray(`— ${f.description}`)}`);
+  }
+  for (const f of state.report.files) {
+    console.log(`  ${chalk.blue('✓')}  ${chalk.white(f.relativePath)} ${chalk.gray(`— ${f.description}`)}`);
+  }
+
+  console.log('');
+  row('Total', chalk.white.bold(`${state.report.totalFilesGenerated} arquivo(s)`));
+
+  if (state.report.notes.length > 0) {
+    section('Observações');
+    state.report.notes.forEach((n) =>
+      console.log(`  ${chalk.yellow('!')} ${chalk.yellow(n)}`)
+    );
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Deployado em: ${state.deployedAt}`));
+  console.log(chalk.gray(`  Próximo passo: copie os arquivos de docker/ para a raiz do projeto e execute docker compose up`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -435,6 +473,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.migration) {
       renderMigration(ctx.migration);
+    }
+
+    if (ctx.deploy) {
+      renderDeploy(ctx.deploy);
     }
   }
 }

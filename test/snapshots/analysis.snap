@@ -1,0 +1,113 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AnalysisReport — react-vite > report completo corresponde ao snapshot 1`] = `
+{
+  "buildSystem": "vite",
+  "criticalFiles": [
+    ".env",
+    "index.html",
+    "package-lock.json",
+    "package.json",
+    "tsconfig.json",
+    "vite.config.ts",
+  ],
+  "detectedAt": "<TIMESTAMP>",
+  "envVars": [
+    "VITE_API_URL",
+    "VITE_APP_TITLE",
+  ],
+  "framework": "react",
+  "language": {
+    "hasTypeScriptConfig": true,
+    "jsFileCount": 0,
+    "primary": "typescript",
+    "tsFileCount": 3,
+  },
+  "lovable": {
+    "configFile": null,
+    "detected": false,
+  },
+  "packageJson": {
+    "dependencies": {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
+      "react-router-dom": "^6.21.0",
+    },
+    "devDependencies": {
+      "@types/react": "^18.2.0",
+      "@types/react-dom": "^18.2.0",
+      "@vitejs/plugin-react": "^4.2.0",
+      "typescript": "^5.3.0",
+      "vite": "^5.0.0",
+    },
+    "name": "react-vite-app",
+    "private": true,
+    "scripts": {
+      "build": "vite build",
+      "dev": "vite",
+      "preview": "vite preview",
+    },
+    "version": "1.0.0",
+  },
+  "packageManager": "npm",
+  "projectName": "react-vite",
+  "routes": [
+    {
+      "file": "src/App.tsx",
+      "path": "/",
+    },
+    {
+      "file": "src/App.tsx",
+      "path": "/about",
+    },
+    {
+      "file": "src/App.tsx",
+      "path": "*",
+    },
+  ],
+  "supabase": {
+    "clientFiles": [],
+    "detected": false,
+    "edgeFunctions": {
+      "count": 0,
+      "names": [],
+    },
+    "migrations": {
+      "count": 0,
+      "files": [],
+    },
+    "usesAuth": false,
+    "usesRealtime": false,
+    "usesStorage": false,
+  },
+  "tailwind": {
+    "detected": false,
+    "hasRadix": false,
+    "hasShadcn": false,
+  },
+}
+`;
+
+exports[`AnalysisReport — supabase-project > report Supabase corresponde ao snapshot 1`] = `
+{
+  "clientFiles": [
+    "src/lib/supabase.ts",
+  ],
+  "detected": true,
+  "edgeFunctions": {
+    "count": 1,
+    "names": [
+      "hello",
+    ],
+  },
+  "migrations": {
+    "count": 1,
+    "files": [
+      "supabase/migrations/001_create_profiles.sql",
+    ],
+  },
+  "usesAuth": true,
+  "usesRealtime": false,
+  "usesStorage": true,
+}
+`;

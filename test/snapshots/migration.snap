@@ -1,0 +1,443 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MigrationResult — react-vite > migration-summary.json é JSON válido e normalizado 1`] = `
+{
+  "allRisks": [
+    {
+      "level": "critical",
+      "message": "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+      "suggestion": "Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação",
+    },
+  ],
+  "artifacts": {
+    "deployInstructionFiles": 1,
+    "edgeFunctionFiles": 0,
+    "envFiles": 2,
+    "migrationFiles": 0,
+    "readmeFiles": 4,
+  },
+  "checklist": [
+    {
+      "done": false,
+      "id": "clone",
+      "label": "Clonar ou extrair o código-fonte do projeto",
+      "required": true,
+    },
+    {
+      "done": false,
+      "id": "env-config",
+      "label": "Configurar 2 variável(eis) de ambiente",
+      "required": true,
+    },
+    {
+      "done": false,
+      "id": "build-verify",
+      "label": "Verificar se o build local funciona (npm run build)",
+      "required": true,
+    },
+    {
+      "done": false,
+      "id": "deploy-build",
+      "label": "Gerar build de produção (vite)",
+      "required": true,
+    },
+    {
+      "done": false,
+      "id": "deploy-upload",
+      "label": "Fazer upload da pasta dist/ para o hosting estático",
+      "required": true,
+    },
+    {
+      "done": false,
+      "id": "deploy-headers",
+      "label": "Configurar headers de cache e CORS no hosting",
+      "required": false,
+    },
+    {
+      "done": false,
+      "id": "smoke-test",
+      "label": "Testar aplicação em ambiente staging antes de produção",
+      "required": true,
+    },
+    {
+      "done": false,
+      "id": "dns-config",
+      "label": "Configurar DNS e domínio customizado (se aplicável)",
+      "required": false,
+    },
+  ],
+  "criticalRisks": [
+    "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+  ],
+  "deploy": {
+    "alternatives": [
+      "node-server",
+      "docker",
+    ],
+    "confidence": "high",
+    "recommended": "static",
+  },
+  "generatedAt": "<TIMESTAMP>",
+  "migrator": "lovable-migrate v1",
+  "pendingManualSteps": [],
+  "projectName": "react-vite",
+  "supabase": {
+    "detected": false,
+    "edgeFunctionsExported": 0,
+    "migrationsExported": 0,
+  },
+  "totalFilesGenerated": 8,
+  "warnings": [],
+}
+`;
+
+exports[`MigrationResult — react-vite > relatório MigrationResult normalizado corresponde ao snapshot 1`] = `
+{
+  "deployInstructions": {
+    "files": [
+      {
+        "content": "# Instruções de Deploy — react-vite
+
+> Gerado pelo **lovable-migrate** em <TIMESTAMP>
+> Framework: **react** | Build: **vite** | Package manager: **npm**
+
+
+## Visão Geral
+
+| Campo             | Valor                                    |
+|-------------------|------------------------------------------|
+| Estratégia        | Hosting Estático (CDN / Netlify / Vercel / S3) |
+| Confiança         | high             |
+| Supabase          | Não                                   |
+| Variáveis de env  | 2 obrigatória(s)    |
+
+> react com vite gera bundle estático — ideal para CDN ou hosting simples
+
+## Pré-requisitos
+
+- Node.js >= 18 ([nodejs.org](https://nodejs.org))
+
+## Configurar Variáveis de Ambiente
+
+Copie o arquivo de template e preencha os valores:
+\`\`\`bash
+cp env/.env.example .env
+\`\`\`
+
+Variáveis obrigatórias:
+- \`VITE_API_URL\`
+- \`VITE_APP_TITLE\`
+
+## Passos de Migração
+
+
+### 1. Instalar Dependências
+
+\`\`\`bash
+npm install
+\`\`\`
+
+### 2. Build de Produção
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+### 3. Verificar Localmente
+
+\`\`\`bash
+npm run preview
+\`\`\`
+
+### 4. Deploy — Hosting Estático
+
+Após o build, a pasta \`dist/\` contém o bundle estático pronto para hospedagem.
+
+**Opção A — Netlify:**
+\`\`\`bash
+# Arraste a pasta dist/ para app.netlify.com/drop
+# ou instale a CLI: npm install -g netlify-cli
+netlify deploy --prod --dir=dist
+\`\`\`
+
+**Opção B — Vercel:**
+\`\`\`bash
+npm install -g vercel
+vercel --prod
+\`\`\`
+
+**Opção C — Servidor próprio (Nginx):**
+\`\`\`bash
+# Copie o conteúdo de dist/ para o diretório raiz do Nginx
+sudo cp -r dist/* /var/www/html/
+\`\`\`
+
+> Build system: **vite**. Comando de build: \`npm run build\`
+
+## Checklist de Verificação
+
+- [ ] Clonar ou extrair o código-fonte do projeto
+- [ ] Configurar 2 variável(eis) de ambiente
+  > VITE_API_URL, VITE_APP_TITLE
+- [ ] Verificar se o build local funciona (npm run build)
+- [ ] Gerar build de produção (vite)
+- [ ] Fazer upload da pasta dist/ para o hosting estático
+- [ ] Configurar headers de cache e CORS no hosting *(opcional)*
+- [ ] Testar aplicação em ambiente staging antes de produção
+- [ ] Configurar DNS e domínio customizado (se aplicável) *(opcional)*
+
+## ⚠️ Riscos Identificados
+
+- **[CRITICAL]** 2 variável(eis) de ambiente precisam ser configuradas antes do deploy
+  → Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação
+
+## Notas de Compatibilidade
+
+- react com vite — compatível com deploy estático e server-side
+
+---
+*Gerado pelo lovable-migrate — engine de migração para projetos Lovable.dev*
+",
+        "description": "Instruções completas de deploy com comandos e checklist",
+        "relativePath": "deploy/deploy-instructions.md",
+      },
+    ],
+  },
+  "edgeFunctions": {
+    "count": 0,
+    "files": [],
+    "names": [],
+    "skipped": true,
+  },
+  "env": {
+    "files": [
+      {
+        "content": "# Gerado pelo lovable-migrate
+# Copie este arquivo para .env e preencha os valores antes de iniciar a aplicação
+
+# Variáveis obrigatórias
+VITE_API_URL=
+VITE_APP_TITLE=
+",
+        "description": "Template de variáveis de ambiente para desenvolvimento",
+        "relativePath": "env/.env.example",
+      },
+      {
+        "content": "# Configuração de produção — gerado pelo lovable-migrate
+# Configure estas variáveis no servidor de produção ou painel do hosting
+# NUNCA commite este arquivo com valores reais preenchidos
+
+# Variáveis obrigatórias para produção
+VITE_API_URL=
+VITE_APP_TITLE=
+",
+        "description": "Template de variáveis de ambiente para produção",
+        "relativePath": "env/.env.production.example",
+      },
+    ],
+  },
+  "folderReadmes": {
+    "files": [
+      {
+        "content": "# Pacote de Migração — react-vite
+
+Gerado pelo **lovable-migrate**. Este diretório contém todos os artefatos
+necessários para migrar o projeto para um ambiente self-hosted.
+
+## Estrutura
+
+\`\`\`
+react-vite/
+├── env/                 # Variáveis de ambiente (templates)
+├── deploy/              # Instruções e scripts de deploy
+└── reports/             # Relatórios de migração
+\`\`\`
+
+## Próximos passos
+
+1. Leia \`deploy/deploy-instructions.md\` para instruções completas
+2. Configure as variáveis de ambiente em \`env/.env.example\`
+3. Consulte \`reports/migration-summary.json\` para visão geral
+
+> Framework: **react** | Build: **vite**
+> Estratégia de deploy: **static**
+",
+        "description": "Documentação da pasta README.md",
+        "relativePath": "README.md",
+      },
+      {
+        "content": "# Variáveis de Ambiente
+
+Contém templates de variáveis de ambiente para o projeto.
+
+| Arquivo                    | Uso                                    |
+|----------------------------|----------------------------------------|
+| \`.env.example\`             | Template para desenvolvimento local    |
+| \`.env.production.example\`  | Template para ambiente de produção     |
+
+## Como usar
+
+\`\`\`bash
+cp .env.example ../../.env
+# Edite .env e preencha os valores
+\`\`\`
+
+## Variáveis obrigatórias (2)
+
+- \`VITE_API_URL\`
+- \`VITE_APP_TITLE\`
+",
+        "description": "Documentação da pasta env",
+        "relativePath": "env/README.md",
+      },
+      {
+        "content": "# Deploy
+
+Contém instruções e configurações de deploy.
+
+| Arquivo                    | Descrição                              |
+|----------------------------|----------------------------------------|
+| \`deploy-instructions.md\`   | Guia completo de deploy com comandos   |
+
+Leia \`deploy-instructions.md\` para o passo a passo completo.
+",
+        "description": "Documentação da pasta deploy",
+        "relativePath": "deploy/README.md",
+      },
+      {
+        "content": "# Relatórios
+
+Contém relatórios gerados pelo lovable-migrate.
+
+| Arquivo                    | Descrição                              |
+|----------------------------|----------------------------------------|
+| \`migration-summary.json\`   | Sumário completo da migração           |
+
+\`migration-summary.json\` lista todos os artefatos gerados, riscos detectados
+e passos manuais pendentes.
+",
+        "description": "Documentação da pasta reports",
+        "relativePath": "reports/README.md",
+      },
+    ],
+  },
+  "migratedAt": "<TIMESTAMP>",
+  "migrations": {
+    "count": 0,
+    "files": [],
+    "skipped": true,
+  },
+  "outputDir": "<OUTPUT_DIR>",
+  "projectName": "react-vite",
+  "report": {
+    "files": [
+      {
+        "content": "{
+  "projectName": "react-vite",
+  "generatedAt": "<TIMESTAMP>",
+  "migrator": "lovable-migrate v1",
+  "totalFilesGenerated": 8,
+  "artifacts": {
+    "envFiles": 2,
+    "migrationFiles": 0,
+    "edgeFunctionFiles": 0,
+    "deployInstructionFiles": 1,
+    "readmeFiles": 4
+  },
+  "deploy": {
+    "recommended": "static",
+    "confidence": "high",
+    "alternatives": [
+      "node-server",
+      "docker"
+    ]
+  },
+  "supabase": {
+    "detected": false,
+    "migrationsExported": 0,
+    "edgeFunctionsExported": 0
+  },
+  "pendingManualSteps": [],
+  "warnings": [],
+  "criticalRisks": [
+    "2 variável(eis) de ambiente precisam ser configuradas antes do deploy"
+  ],
+  "allRisks": [
+    {
+      "level": "critical",
+      "message": "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+      "suggestion": "Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "clone",
+      "label": "Clonar ou extrair o código-fonte do projeto",
+      "required": true,
+      "done": false
+    },
+    {
+      "id": "env-config",
+      "label": "Configurar 2 variável(eis) de ambiente",
+      "required": true,
+      "done": false
+    },
+    {
+      "id": "build-verify",
+      "label": "Verificar se o build local funciona (npm run build)",
+      "required": true,
+      "done": false
+    },
+    {
+      "id": "deploy-build",
+      "label": "Gerar build de produção (vite)",
+      "required": true,
+      "done": false
+    },
+    {
+      "id": "deploy-upload",
+      "label": "Fazer upload da pasta dist/ para o hosting estático",
+      "required": true,
+      "done": false
+    },
+    {
+      "id": "deploy-headers",
+      "label": "Configurar headers de cache e CORS no hosting",
+      "required": false,
+      "done": false
+    },
+    {
+      "id": "smoke-test",
+      "label": "Testar aplicação em ambiente staging antes de produção",
+      "required": true,
+      "done": false
+    },
+    {
+      "id": "dns-config",
+      "label": "Configurar DNS e domínio customizado (se aplicável)",
+      "required": false,
+      "done": false
+    }
+  ]
+}",
+        "description": "Sumário completo da migração com artefatos, riscos e pendências",
+        "relativePath": "reports/migration-summary.json",
+      },
+    ],
+    "pendingManualSteps": [],
+    "totalFilesGenerated": 8,
+    "warnings": [],
+  },
+}
+`;
+
+exports[`MigrationResult — supabase-project > relatório supabase normalizado corresponde ao snapshot 1`] = `
+{
+  "edgeFunctionNames": [
+    "hello",
+  ],
+  "edgeFunctions": 1,
+  "migrations": 1,
+  "pendingStepsCount": 7,
+}
+`;

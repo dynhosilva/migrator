@@ -3,6 +3,7 @@ import type { AnalysisReport } from '../analyzer/types';
 import type { MigrationPlan } from '../planner/types';
 import type { MigrationResult } from '../migrator/types';
 import type { ValidationResult } from '../validator/types';
+import type { DeployState } from '../deploy/types';
 import type { ProjectContext } from './types';
 
 export type { ProjectContext, SourceInfo, ProjectMeta } from './types';
@@ -46,4 +47,9 @@ export function withValidation(ctx: ProjectContext, validation: ValidationResult
 /** Retorna novo contexto imutável com o resultado da migração preenchido. */
 export function withMigration(ctx: ProjectContext, migration: MigrationResult): ProjectContext {
   return { ...ctx, migration };
+}
+
+/** Retorna novo contexto imutável com o resultado do deploy preenchido. */
+export function withDeploy(ctx: ProjectContext, deploy: DeployState): ProjectContext {
+  return { ...ctx, deploy };
 }
