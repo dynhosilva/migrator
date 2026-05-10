@@ -1,5 +1,7 @@
 import type { ProjectFile, SourceKind } from '../sources/types';
 import type { AnalysisReport } from '../analyzer/types';
+import type { MigrationPlan } from '../planner/types';
+import type { MigrationResult } from '../migrator/types';
 
 export interface SourceInfo {
   kind: SourceKind;
@@ -30,8 +32,12 @@ export interface ProjectContext {
   // Preenchido pela fase de análise
   readonly analysis?: AnalysisReport;
 
+  // Preenchido pela fase de planejamento
+  readonly plan?: MigrationPlan;
+
+  // Preenchido pela fase de migração
+  readonly migration?: MigrationResult;
+
   // Fases futuras (não implementadas — reservado para extensão):
-  // readonly plan?: MigrationPlan;
-  // readonly migration?: MigrationResult;
   // readonly deploy?: DeployState;
 }

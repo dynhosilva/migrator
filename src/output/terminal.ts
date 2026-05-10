@@ -1,7 +1,17 @@
+import path  from 'path';
 import chalk from 'chalk';
 import type { Renderer } from './renderer';
 import type { ProjectContext } from '../core/types';
 import type { AnalysisReport } from '../analyzer/types';
+import type {
+  MigrationPlan,
+  CompatibilityResult,
+  InfrastructureResult,
+  SupabasePlanResult,
+  DeployStrategyResult,
+  RiskLevel,
+} from '../planner/types';
+import type { MigrationResult } from '../migrator/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -137,6 +147,205 @@ function renderAnalysis(report: AnalysisReport): void {
   console.log('');
 }
 
+const RISK_COLORS: Record<RiskLevel, (s: string) => string> = {
+  critical: (s) => chalk.red.bold(s),
+  high:     (s) => chalk.red(s),
+  medium:   (s) => chalk.yellow(s),
+  low:      (s) => chalk.gray(s),
+};
+
+const CONFIDENCE_LABEL: Record<string, string> = {
+  high:    'alta',
+  medium:  'média',
+  low:     'baixa',
+  unknown: 'indeterminada',
+};
+
+const DEPLOY_LABEL: Record<string, string> = {
+  'static':      'estático (CDN / hosting simples)',
+  'node-server': 'servidor Node.js',
+  'docker':      'Docker',
+  'edge':        'edge (Cloudflare Workers / Deno Deploy)',
+  'unknown':     'indeterminado',
+};
+
+function renderCompatibility(c: CompatibilityResult): void {
+  section('Compatibilidade de deploy');
+  console.log(tick(c.canDeployStatic, 'Deploy estático (CDN / hosting simples)'));
+  console.log(tick(c.canDeployServer, 'Deploy server-side (Node.js / Docker)'));
+  row('Confiança', chalk.white(CONFIDENCE_LABEL[c.confidence] ?? c.confidence));
+  if (c.reasons.length > 0) {
+    c.reasons.forEach((r) => console.log(`    ${chalk.gray('·')} ${chalk.gray(r)}`));
+  }
+}
+
+function renderInfrastructure(inf: InfrastructureResult): void {
+  section('Infraestrutura necessária');
+  console.log(tick(inf.requiresSupabase,       'Instância própria do Supabase'));
+  console.log(tick(inf.requiresDatabase,       'Banco de dados (migrations)'));
+  console.log(tick(inf.requiresObjectStorage,  'Object Storage (Supabase Storage)'));
+  console.log(tick(inf.requiresServerlessEdge, 'Edge Functions serverless'));
+  console.log(tick(inf.requiresNodeServer,     'Servidor Node.js'));
+  if (inf.notes.length > 0) {
+    console.log('');
+    inf.notes.forEach((n) => console.log(`    ${chalk.gray('·')} ${chalk.gray(n)}`));
+  }
+}
+
+function renderSupabasePlan(s: SupabasePlanResult): void {
+  if (!s.requiresOwnInstance) return;
+  section('Supabase — requisitos');
+  console.log(tick(s.requiresOwnInstance,   'Instância própria'));
+  console.log(tick(s.requiresMigrations,    'Migrations de banco de dados'));
+  console.log(tick(s.requiresAuth,          'Autenticação'));
+  console.log(tick(s.requiresStorage,       'Object Storage'));
+  console.log(tick(s.requiresEdgeFunctions, 'Edge Functions'));
+  console.log(tick(s.requiresRealtime,      'Realtime'));
+
+  if (s.manualSteps.length > 0) {
+    console.log('');
+    console.log(`  ${chalk.gray('Passos manuais necessários:')}`);
+    s.manualSteps.forEach((step, i) =>
+      console.log(`    ${chalk.gray(`${i + 1}.`)} ${step}`)
+    );
+  }
+}
+
+function renderDeployStrategy(d: DeployStrategyResult): void {
+  section('Estratégia de deploy');
+  const recLabel = DEPLOY_LABEL[d.recommended] ?? d.recommended;
+  row('Recomendado',  chalk.white.bold(recLabel));
+  row('Confiança',    chalk.white(CONFIDENCE_LABEL[d.confidence] ?? d.confidence));
+  console.log('');
+  console.log(`    ${chalk.italic(d.reasoning)}`);
+  if (d.alternatives.length > 0) {
+    const alts = d.alternatives.map((a) => DEPLOY_LABEL[a] ?? a).join(', ');
+    console.log('');
+    row('Alternativas', chalk.gray(alts));
+  }
+  if (d.notes.length > 0) {
+    console.log('');
+    d.notes.forEach((n) => console.log(`    ${chalk.gray('·')} ${chalk.gray(n)}`));
+  }
+}
+
+function renderPlan(plan: MigrationPlan): void {
+  const W = 56;
+  console.log('');
+  console.log(chalk.bold.magenta(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(chalk.bold.magenta(`  │${'  Plano de Migração'.padEnd(W - 2)}│`));
+  console.log(chalk.bold.magenta(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto',      chalk.white(plan.projectName));
+
+  renderDeployStrategy(plan.deployStrategy);
+  renderCompatibility(plan.compatibility);
+  renderInfrastructure(plan.infrastructure);
+
+  if (plan.supabase.requiresOwnInstance) {
+    renderSupabasePlan(plan.supabase);
+  }
+
+  if (plan.env.required.length > 0) {
+    section('Variáveis de ambiente');
+    row('Obrigatórias', chalk.white(String(plan.env.required.length)));
+    plan.env.required.forEach((v) => console.log(`    ${chalk.yellow(v)}`));
+  }
+
+  if (plan.risks.length > 0) {
+    section('Riscos detectados');
+    const order: RiskLevel[] = ['critical', 'high', 'medium', 'low'];
+    const sorted = [...plan.risks].sort(
+      (a, b) => order.indexOf(a.level) - order.indexOf(b.level),
+    );
+    sorted.forEach((r) => {
+      const colorFn = RISK_COLORS[r.level];
+      console.log(`  ${colorFn(`[${r.level.toUpperCase()}]`)} ${r.message}`);
+      if (r.suggestion) {
+        console.log(`    ${chalk.gray('→')} ${chalk.gray(r.suggestion)}`);
+      }
+    });
+  }
+
+  if (plan.checklist.length > 0) {
+    section('Checklist de migração');
+    plan.checklist.forEach((item) => {
+      const box      = chalk.gray('[ ]');
+      const label    = item.required ? item.label : chalk.gray(item.label);
+      const required = item.required ? '' : chalk.gray('  (opcional)');
+      console.log(`  ${box} ${label}${required}`);
+      if (item.notes) {
+        console.log(`    ${chalk.gray(item.notes)}`);
+      }
+    });
+  }
+
+  if (plan.warnings.length > 0) {
+    section('Avisos');
+    plan.warnings.forEach((w) =>
+      console.log(`  ${chalk.yellow('!')} ${chalk.yellow(w)}`)
+    );
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Planejado em: ${plan.plannedAt}`));
+  console.log('');
+}
+
+function renderMigration(result: MigrationResult): void {
+  const W = 56;
+  console.log('');
+  console.log(chalk.bold.green(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(chalk.bold.green(`  │${'  Resultado da Migração'.padEnd(W - 2)}│`));
+  console.log(chalk.bold.green(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto', chalk.white(result.projectName));
+  row('Saída',   chalk.white(result.outputDir));
+
+  section('Artefatos gerados');
+
+  const categories: Array<{ label: string; files: { length: number } }> = [
+    { label: 'Variáveis de ambiente',    files: result.env.files },
+    { label: 'Migrations SQL',           files: result.migrations.files },
+    { label: 'Edge Functions',           files: result.edgeFunctions.files },
+    { label: 'Instruções de deploy',     files: result.deployInstructions.files },
+    { label: 'READMEs das pastas',       files: result.folderReadmes.files },
+    { label: 'Relatório de migração',    files: result.report.files },
+  ];
+
+  for (const { label, files } of categories) {
+    if (files.length > 0) {
+      console.log(`  ${chalk.green('✓')}  ${chalk.white(label)} ${chalk.gray(`(${files.length} arquivo(s))`)}`);
+    } else {
+      console.log(`  ${chalk.gray('–')}  ${chalk.gray(label)} ${chalk.gray('(nenhum)')}`);
+    }
+  }
+
+  console.log('');
+  row('Total gerado', chalk.white.bold(`${result.report.totalFilesGenerated} arquivo(s)`));
+
+  if (result.report.pendingManualSteps.length > 0) {
+    section('Passos manuais pendentes');
+    result.report.pendingManualSteps.forEach((step, i) =>
+      console.log(`  ${chalk.yellow(String(i + 1) + '.')} ${step}`)
+    );
+  }
+
+  if (result.report.warnings.length > 0) {
+    section('Avisos');
+    result.report.warnings.forEach((w) =>
+      console.log(`  ${chalk.yellow('!')} ${chalk.yellow(w)}`)
+    );
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Migrado em: ${result.migratedAt}`));
+  console.log(chalk.gray(`  Leia: ${path.join(result.outputDir, 'deploy', 'deploy-instructions.md')}`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -144,5 +353,13 @@ export class TerminalRenderer implements Renderer {
       return;
     }
     renderAnalysis(ctx.analysis);
+
+    if (ctx.plan) {
+      renderPlan(ctx.plan);
+    }
+
+    if (ctx.migration) {
+      renderMigration(ctx.migration);
+    }
   }
 }
