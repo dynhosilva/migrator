@@ -93,6 +93,27 @@ export class MeuRenderer implements Renderer {
 }
 ```
 
+## Como implementar uma nova fase do pipeline
+
+Toda nova fase (planner, migrator, deploy, sync) segue este padrão obrigatório:
+
+1. Criar `src/<fase>/types.ts` — definir o tipo de output da fase (ex: `MigrationPlan`)
+2. Adicionar campo `readonly` na interface `ProjectContext` em `src/core/types.ts` (ex: `readonly plan?: MigrationPlan`)
+3. Criar `src/<fase>/index.ts` — função que recebe `ProjectContext` e retorna `withX(ctx, resultado)`
+4. Criar `src/core/index.ts` — adicionar `withX` seguindo o padrão de `withAnalysis`
+5. Registrar a fase no pipeline em `src/cli.ts`
+6. Exportar tipos e funções em `src/index.ts`
+
+**Regras invioláveis de qualquer fase:**
+- Toda fase é uma função pura: mesmo input → mesmo output, sem efeitos colaterais ocultos
+- Toda fase recebe `ProjectContext` e retorna **novo** `ProjectContext` via spread — nunca mutar diretamente
+- Toda fase tem seu próprio `types.ts` — nunca misturar tipos de fases diferentes
+- Dependências circulares entre módulos são proibidas — o grafo de dependências deve ser um DAG
+
+**Regras de integração externa:**
+- Novas integrações (Supabase, Hostinger, GitHub API) ficam em `src/integrations/<nome>/`
+- Integrações são chamadas pelas fases, nunca chamam fases diretamente
+
 ## Decisões arquiteturais estabelecidas
 
 - **Contexto imutável**: fases do pipeline nunca mutam `ProjectContext`, sempre retornam novo objeto via spread.
@@ -108,6 +129,9 @@ export class MeuRenderer implements Renderer {
 - Código, nomes de variáveis, funções, tipos e comentários técnicos em **inglês**.
 - Backward compatibility: `printReport(report)` e `analyzeProject(files, name)` permanecem funcionais. Novo código usa `analyzeContext(ctx)` e `renderer.render(ctx)`.
 - Fases futuras (planner, migrator, deploy) devem seguir o padrão: recebem `ProjectContext`, enriquecem com seu campo, retornam novo contexto.
+- **Composição sobre herança** — preferir interfaces e funções compostas a hierarquias de classes.
+- **Detectores independentes** — cada detector em `src/analyzer/detectors/` não deve importar de outro detector. Dependências entre resultados passam por `ctx.partial`, nunca por import direto.
+- **Renderers sem lógica de negócio** — implementações de `Renderer` em `src/output/` só formatam e exibem. Decisões sobre o que mostrar pertencem ao domínio, não ao renderer.
 
 ## O que NÃO fazer
 
@@ -116,3 +140,7 @@ export class MeuRenderer implements Renderer {
 - Não implementar planner, migrator, deploy ou sync antes de consolidar a fase atual.
 - Não criar "god objects" flat — novos campos de análise vão em sub-interfaces específicas.
 - Não mutar arrays ou objetos do contexto — imutabilidade é invariante do pipeline.
+- Não adicionar lógica de negócio em renderers — `src/output/` é camada de apresentação pura.
+- Não importar um detector dentro de outro detector — usar `ctx.partial` para dependências de resultado.
+- Não criar integrações externas dentro de fases — isolar em `src/integrations/<nome>/`.
+- Não usar herança onde composição resolve — preferir `implements Interface` a `extends Classe`.
