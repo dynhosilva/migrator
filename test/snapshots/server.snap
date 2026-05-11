@@ -1,0 +1,242 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`POST /analyze — react-vite > data normalizada corresponde ao snapshot 1`] = `
+{
+  "buildSystem": "vite",
+  "detectedAt": "<TIMESTAMP>",
+  "envVars": [
+    "VITE_API_URL",
+    "VITE_APP_TITLE",
+  ],
+  "framework": "react",
+  "language": {
+    "hasTypeScriptConfig": true,
+    "jsFileCount": 0,
+    "primary": "typescript",
+    "tsFileCount": 3,
+  },
+  "lovable": {
+    "detected": false,
+  },
+  "packageManager": "npm",
+  "projectName": "react-vite",
+  "routes": [
+    {
+      "file": "src/App.tsx",
+      "path": "/",
+    },
+    {
+      "file": "src/App.tsx",
+      "path": "/about",
+    },
+    {
+      "file": "src/App.tsx",
+      "path": "*",
+    },
+  ],
+  "supabase": {
+    "detected": false,
+    "hasEdgeFunctions": false,
+  },
+  "tailwind": {
+    "detected": false,
+  },
+}
+`;
+
+exports[`POST /deploy — react-vite > data normalizada corresponde ao snapshot 1`] = `
+{
+  "baseImage": "nginx:alpine",
+  "deployedAt": "<TIMESTAMP>",
+  "exposedPort": 80,
+  "filesGenerated": 5,
+  "notes": [
+    "Configure 2 variável(is) de ambiente antes do primeiro deploy.",
+  ],
+  "outputDir": "<OUTPUT_DIR>",
+  "projectName": "react-vite",
+  "strategy": "static",
+}
+`;
+
+exports[`POST /migrate > data normalizada corresponde ao snapshot 1`] = `
+{
+  "filesGenerated": 8,
+  "migratedAt": "<TIMESTAMP>",
+  "outputDir": "<OUTPUT_DIR>",
+  "pendingManualSteps": [],
+  "projectName": "react-vite",
+  "warnings": [],
+}
+`;
+
+exports[`POST /plan — react-vite > data normalizada corresponde ao snapshot 1`] = `
+{
+  "checklist": [
+    {
+      "id": "clone",
+      "label": "Clonar ou extrair o código-fonte do projeto",
+      "required": true,
+    },
+    {
+      "id": "env-config",
+      "label": "Configurar 2 variável(eis) de ambiente",
+      "notes": "VITE_API_URL, VITE_APP_TITLE",
+      "required": true,
+    },
+    {
+      "id": "build-verify",
+      "label": "Verificar se o build local funciona (npm run build)",
+      "required": true,
+    },
+    {
+      "id": "deploy-build",
+      "label": "Gerar build de produção (vite)",
+      "required": true,
+    },
+    {
+      "id": "deploy-upload",
+      "label": "Fazer upload da pasta dist/ para o hosting estático",
+      "required": true,
+    },
+    {
+      "id": "deploy-headers",
+      "label": "Configurar headers de cache e CORS no hosting",
+      "required": false,
+    },
+    {
+      "id": "smoke-test",
+      "label": "Testar aplicação em ambiente staging antes de produção",
+      "required": true,
+    },
+    {
+      "id": "dns-config",
+      "label": "Configurar DNS e domínio customizado (se aplicável)",
+      "required": false,
+    },
+  ],
+  "compatibility": {
+    "canDeployServer": true,
+    "canDeployStatic": true,
+    "confidence": "high",
+    "reasons": [
+      "react com vite — compatível com deploy estático e server-side",
+    ],
+  },
+  "deployStrategy": {
+    "alternatives": [
+      "node-server",
+      "docker",
+    ],
+    "confidence": "high",
+    "notes": [
+      "Gerar build: npm run build → pasta dist/ via vite",
+    ],
+    "reasoning": "react com vite gera bundle estático — ideal para CDN ou hosting simples",
+    "recommended": "static",
+  },
+  "env": {
+    "missing": [
+      "VITE_API_URL",
+      "VITE_APP_TITLE",
+    ],
+    "required": [
+      "VITE_API_URL",
+      "VITE_APP_TITLE",
+    ],
+  },
+  "infrastructure": {
+    "notes": [
+      "Infraestrutura mínima — projeto pode rodar em hosting estático simples",
+    ],
+    "requiresDatabase": false,
+    "requiresNodeServer": false,
+    "requiresObjectStorage": false,
+    "requiresServerlessEdge": false,
+    "requiresSupabase": false,
+  },
+  "plannedAt": "<TIMESTAMP>",
+  "projectName": "react-vite",
+  "risks": [
+    {
+      "level": "critical",
+      "message": "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+      "suggestion": "Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação",
+    },
+  ],
+  "warnings": [],
+}
+`;
+
+exports[`POST /remote — react-vite > data normalizada corresponde ao snapshot 1`] = `
+{
+  "deployCompatible": true,
+  "deployStrategy": "static",
+  "executionSteps": [
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "mkdir -p /opt/app/docker /opt/app/env"",
+      "description": "Cria estrutura de diretórios no servidor remoto",
+      "id": "create-remote-dirs",
+      "remote": true,
+      "risk": "low",
+    },
+    {
+      "command": "rsync -avz -e "ssh -i ~/.ssh/id_rsa" docker/Dockerfile docker/docker-compose.yml docker/.dockerignore env/.env.example env/.env.production.example reports/migration-summary.json ubuntu@your-server.example.com:/opt/app/",
+      "description": "Transfere 6 arquivo(s) para o servidor remoto",
+      "id": "transfer-files",
+      "remote": false,
+      "requires": [
+        "create-remote-dirs",
+      ],
+      "risk": "medium",
+    },
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "cd /opt/app && docker build -f docker/Dockerfile -t react-vite:latest ."",
+      "description": "Constrói imagem Docker no servidor remoto",
+      "id": "docker-build-remote",
+      "remote": true,
+      "requires": [
+        "transfer-files",
+      ],
+      "risk": "medium",
+    },
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "cd /opt/app && docker compose -f docker/docker-compose.yml up -d"",
+      "description": "Inicia os containers via Docker Compose",
+      "id": "docker-compose-up",
+      "remote": true,
+      "requires": [
+        "docker-build-remote",
+      ],
+      "risk": "high",
+    },
+    {
+      "command": "ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "curl -sf http://localhost:80/ && echo OK"",
+      "description": "Verifica que a aplicação está respondendo na porta esperada",
+      "id": "verify-health",
+      "remote": true,
+      "requires": [
+        "docker-compose-up",
+      ],
+      "risk": "low",
+    },
+  ],
+  "hostCompatible": true,
+  "issues": [
+    {
+      "code": "SSH_HOST_NOT_CONFIGURED",
+      "message": "Host SSH não configurado — usando placeholder padrão.",
+      "severity": "warning",
+      "suggestion": "Forneça o hostname ou endereço IP real do servidor de destino.",
+    },
+  ],
+  "outputDir": "<OUTPUT_DIR>",
+  "preparedAt": "<TIMESTAMP>",
+  "projectName": "react-vite",
+  "readiness": "ready-with-warnings",
+  "remotePath": "/opt/app",
+  "sshValid": true,
+  "transferFiles": 6,
+  "transferSizeKB": 11,
+}
+`;

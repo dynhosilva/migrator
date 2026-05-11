@@ -18,9 +18,11 @@
     "test:snapshots": "vitest run -u"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
     "adm-zip": "^0.5.10",
     "chalk": "^4.1.2",
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "fastify": "^5.8.5"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",

@@ -10,6 +10,7 @@ import { deployContext }   from './deploy';
 import { executeContext }  from './executor';
 import { runContext }      from './runtime';
 import { prepareContext }  from './remote';
+import { startServer }     from './server';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -422,6 +423,17 @@ program
       logger.error((err as Error).message);
       process.exit(1);
     }
+  });
+
+program
+  .command('server')
+  .description('Inicia o servidor HTTP da API (padrão: http://127.0.0.1:3001)')
+  .option('-p, --port <port>', 'Porta do servidor', '3001')
+  .option('--host <host>', 'Host de escuta', '127.0.0.1')
+  .action(async (options: { port?: string; host?: string }) => {
+    const port = parseInt(options.port ?? '3001', 10);
+    const host = options.host ?? '127.0.0.1';
+    await startServer({ port, host });
   });
 
 program.parse(process.argv);

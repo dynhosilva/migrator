@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-ChildItem \"D:\\\\lovable-migrate\" -ErrorAction SilentlyContinue | Select-Object Name, LastWriteTime; if \\(-not \\(Test-Path \"D:\\\\lovable-migrate\"\\)\\) { \"Diretório não encontrado\" })"
+      "PowerShell(Get-ChildItem \"D:\\\\lovable-migrate\" -ErrorAction SilentlyContinue | Select-Object Name, LastWriteTime; if \\(-not \\(Test-Path \"D:\\\\lovable-migrate\"\\)\\) { \"Diretório não encontrado\" })",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\lovable-migrate\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }
