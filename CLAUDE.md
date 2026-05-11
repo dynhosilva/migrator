@@ -846,3 +846,25 @@ A pasta `assets/` contém diagramas Mermaid e instruções para gerar screenshot
 - `examples/strat-forge-pro/` — projeto real exportado do Lovable.dev; não modificar estrutura interna
 - Novos exemplos devem ter `package.json` detectável + README documentando o que é detectado
 - Não criar exemplos de stacks não suportadas sem avisar claramente no README do exemplo
+
+### Estratégia de lançamento
+
+O lançamento segue ordem fixa: **GitHub Release → npm publish (CI automático) → verificação manual → canais externos**.
+
+Nunca publicar em redes sociais antes de confirmar `npm install -g lovable-migrate` funcionando.
+
+Ver `docs/launch-plan.md` para o plano completo com textos prontos para cada canal.
+
+### Assets de comunicação
+
+| Arquivo | Propósito |
+|---|---|
+| `docs/positioning.md` | Tagline, pitches, audiência, diferenciais, anti-objetivos |
+| `docs/launch-plan.md` | Ordem de lançamento, textos por canal, checklist |
+| `docs/onboarding-review.md` | Simulação real de onboarding — fricções identificadas e resolvidas |
+| `docs/release-v0.1.0.md` | Release notes completas para v0.1.0 |
+| `release/package-report.md` | Análise real do pacote npm (tamanho, arquivos, verificação) |
+| `release/release-checklist-v0.1.0.md` | Checklist completo pré/pós lançamento |
+| `release/github-profile-recommendations.md` | Topics, description, social preview, labels recomendados |
+| `assets/screenshots/tui-screens.md` | Mockups ASCII de alta fidelidade de todas as telas TUI |
+| `assets/gifs/tui-demo.tape` | Script VHS para gerar GIF animado da TUI |

@@ -388,7 +388,8 @@ function renderValidation(result: ValidationResult): void {
   if (result.safeToMigrate) {
     row('Status', chalk.green.bold('✓ SEGURO para migração'));
   } else {
-    row('Status', chalk.red.bold(`✗ NÃO SEGURO — ${result.summary.criticalCount} issue(s) crítico(s)`));
+    row('Status', chalk.red.bold(`✗ ${result.summary.criticalCount} issue(s) crítico(s) — configure antes de migrar`));
+    row('Dica', chalk.dim('Use --force em migrate/deploy para prosseguir mesmo assim'));
   }
 
   if (result.blockingIssues.length > 0) {

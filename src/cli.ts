@@ -21,7 +21,15 @@ const program = new Command();
 
 program
   .name('lovable-migrate')
-  .description('Migration engine for Lovable.dev exported projects')
+  .description([
+    'Migration engine for Lovable.dev exported projects',
+    '',
+    'Exemplos:',
+    '  $ lovable-migrate analyze ./meu-projeto',
+    '  $ lovable-migrate deploy ./meu-projeto --output ./output',
+    '  $ lovable-migrate ui                         # wizard interativo (recomendado)',
+    '  $ lovable-migrate server --port 3001         # API HTTP',
+  ].join('\n'))
   .version(VERSION);
 
 program
@@ -141,6 +149,7 @@ program
 
       // Sai com código 1 se há issues críticos — útil em pipelines CI/CD
       if (!validated.validation?.safeToMigrate) {
+        logger.info('Use --force no comando migrate/deploy para prosseguir mesmo com issues críticos.');
         process.exit(1);
       }
     } catch (err) {
