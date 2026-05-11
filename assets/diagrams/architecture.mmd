@@ -1,0 +1,40 @@
+graph TB
+    subgraph TRANSPORT ["Camadas de transporte (sem lógica de domínio)"]
+        CLI["CLI\nCommander"]
+        API["API HTTP\nFastify"]
+        TUI["TUI\nInk/React"]
+    end
+
+    subgraph ENGINE ["Engine (domínio puro)"]
+        direction TB
+        ANA["Analyzer\nDetectorRegistry"]
+        PLA["Planner\nPlannerRegistry"]
+        VAL["Validator\nValidationRegistry"]
+        MIG["Migrator\nMigratorRegistry"]
+        DEP["Deploy\nDeployerRegistry"]
+        EXE["Executor\nExecutorRegistry"]
+        RUN["Runtime\nRuntimeRegistry"]
+        REM["Remote\nRemoteRegistry"]
+    end
+
+    subgraph CORE ["Core"]
+        CTX["ProjectContext\n(imutável)"]
+    end
+
+    subgraph SOURCES ["Sources"]
+        LOCAL["LocalFolderSource"]
+        ZIP["ZipSource"]
+        GIT["GitHubSource"]
+    end
+
+    CLI --> ENGINE
+    API --> ENGINE
+    TUI --> ENGINE
+
+    SOURCES --> CTX
+    CTX --> ANA --> PLA --> VAL --> MIG --> DEP --> EXE --> RUN --> REM
+
+    style TRANSPORT fill:#e3f2fd
+    style ENGINE fill:#f3e5f5
+    style CORE fill:#e8f5e9
+    style SOURCES fill:#fff3e0

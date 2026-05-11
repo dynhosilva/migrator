@@ -1,0 +1,85 @@
+name: Bug Report
+description: Reporte um bug ou comportamento inesperado
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar! Preencha o máximo de informações possível para agilizar a correção.
+
+  - type: input
+    id: version
+    attributes:
+      label: Versão do lovable-migrate
+      placeholder: "0.1.0 (use: lovable-migrate --version)"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Versão do Node.js
+      placeholder: "20.0.0 (use: node --version)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Sistema operacional
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: dropdown
+    id: command
+    attributes:
+      label: Comando utilizado
+      options:
+        - analyze
+        - plan
+        - validate
+        - migrate
+        - deploy
+        - execute
+        - remote
+        - ui
+        - server
+        - outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do bug
+      description: O que aconteceu? O que você esperava que acontecesse?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Comando executado: `lovable-migrate deploy ./meu-projeto`
+        2. Stack do projeto: React + Vite
+        3. Erro recebido: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output completo (logs/erro)
+      render: shell
+      description: Cole o output completo do terminal, incluindo a mensagem de erro
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Qualquer informação adicional relevante (package.json do projeto analisado, estrutura de pastas, etc.)

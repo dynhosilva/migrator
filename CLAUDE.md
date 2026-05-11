@@ -798,3 +798,51 @@ Ao adicionar campos relevantes para distribuição (`repository`, `homepage`, `f
 - Adicionar em `package.json`
 - Atualizar `test/packaging/integrity.test.ts` se o campo for verificável
 - Não adicionar campos que não serão publicados (ex: configs de editor) — eles aumentam o tamanho do pacote
+
+## Open Source
+
+### Filosofia OSS
+
+O `lovable-migrate` é **conservador e transparente** — nunca faz mais do que o necessário sem confirmação explícita do usuário. Essa postura se reflete na filosofia de contribuição:
+
+- Cada PR deve fazer uma coisa bem feita — sem "enquanto estou aqui" de limpeza não solicitada
+- Features novas requerem issue/discussion antes da implementação — alinhamento antes do código
+- Testes são obrigatórios — nenhum comportamento novo sem cobertura
+- Documentação é parte da feature — PR sem docs é PR incompleto
+
+### Estrutura de comunidade
+
+| Arquivo | Propósito |
+|---|---|
+| `CONTRIBUTING.md` | Guia de contribuição — setup, convenções, processo de review |
+| `CODE_OF_CONDUCT.md` | Padrões de comportamento da comunidade |
+| `SECURITY.md` | Modelo de segurança + como reportar vulnerabilidades |
+| `CHANGELOG.md` | Histórico de mudanças por versão (Keep a Changelog) |
+| `ROADMAP.md` | Planejamento público — o que está feito, em progresso e planejado |
+| `.github/ISSUE_TEMPLATE/` | Templates para bug reports e feature requests |
+| `.github/PULL_REQUEST_TEMPLATE.md` | Checklist de PR |
+
+### Filosofia de release
+
+- **Semantic versioning** — patch para fixes, minor para features compatíveis, major para breaking changes
+- **Nunca breaking change sem major** — a interface pública de `src/index.ts` é contrato
+- **Release via tags** — nunca `npm publish` manual — o CI cuida disso com validações
+- **CHANGELOG atualizado junto com o release** — não após
+
+### Exemplos e demos
+
+A pasta `examples/` contém projetos mínimos funcionais que o `lovable-migrate analyze` consegue processar. Cada exemplo:
+- Tem `package.json` com a stack relevante
+- Tem README explicando o que demonstra e o que é detectado
+- É somente leitura — não é modificado pelo pipeline (o output vai para `output/`)
+- Está excluído do pacote npm (o campo `files` não inclui `examples/`)
+
+A pasta `demos/` contém walkthroughs textuais de cada modo de uso (TUI, API, runtime, remote) com outputs reais esperados.
+
+A pasta `assets/` contém diagramas Mermaid e instruções para gerar screenshots e GIFs da TUI.
+
+### Manutenção de examples/
+
+- `examples/strat-forge-pro/` — projeto real exportado do Lovable.dev; não modificar estrutura interna
+- Novos exemplos devem ter `package.json` detectável + README documentando o que é detectado
+- Não criar exemplos de stacks não suportadas sem avisar claramente no README do exemplo

@@ -1,105 +1,312 @@
 # lovable-migrate
 
-Engine de migração para projetos exportados do [Lovable.dev](https://lovable.dev).
+> **Migrate your Lovable.dev projects to self-hosted infrastructure — safely, step by step.**
 
-Automatiza análise, planejamento, validação, geração de artefatos Docker, planejamento de deploy remoto e execução controlada — tudo a partir de um único CLI.
+[![npm version](https://img.shields.io/npm/v/lovable-migrate.svg)](https://www.npmjs.com/package/lovable-migrate)
+[![CI](https://github.com/your-org/lovable-migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/lovable-migrate/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+
+---
+
+`lovable-migrate` é uma engine de migração para projetos exportados do [Lovable.dev](https://lovable.dev). Ela analisa sua stack, gera artefatos Docker prontos para produção, planeja o deploy remoto e executa o build — tudo de forma controlada, reversível e sem modificar seu projeto original.
+
+**Três formas de usar:**
+- **CLI** — pipeline completo em um comando
+- **TUI** — wizard interativo no terminal
+- **API HTTP** — integração com CI/CD e automações
+
+---
 
 ## Instalação
 
 ```bash
-# Global (recomendado)
 npm install -g lovable-migrate
-
-# Execução direta (sem instalação)
-npx lovable-migrate --help
 ```
 
 **Requisito:** Node.js >= 18.0.0
 
-## Uso rápido
+```bash
+lovable-migrate --version  # verifica a instalação
+```
+
+---
+
+## Quick Start
 
 ```bash
-# Analisar um projeto Lovable exportado
-lovable-migrate analyze /path/to/project
+# 1. Analisar a stack do projeto
+lovable-migrate analyze ./meu-projeto
 
-# Pipeline completo (analyze → plan → validate → migrate → deploy → execute)
-lovable-migrate deploy /path/to/project --output ./output/meu-projeto
+# 2. Pipeline completo — gera todos os artefatos
+lovable-migrate deploy ./meu-projeto --output ./output/meu-projeto
 
-# Wizard interativo (TUI)
+# 3. Wizard interativo (recomendado para primeiros projetos)
 lovable-migrate ui
-
-# Servidor HTTP da API
-lovable-migrate server --port 3001
 ```
 
-## Fases do pipeline
-
-| Comando      | Fases executadas                                     |
-|---|---|
-| `inspect`    | Carregamento de arquivos                             |
-| `analyze`    | + Detecção de stack                                  |
-| `plan`       | + Planejamento de deploy                             |
-| `validate`   | + Validação de segurança                             |
-| `migrate`    | + Geração de artefatos (env, SQL, instruções)        |
-| `deploy`     | + Geração de Dockerfile + docker-compose             |
-| `execute`    | + Verificação de ambiente + plano de execução        |
-| `remote`     | + Planejamento de deploy remoto (sem SSH real)       |
-
-## Artefatos gerados
+### Saída gerada
 
 ```
-output/<projeto>/
+output/meu-projeto/
 ├── env/
-│   ├── .env.example
+│   ├── .env.example                  # todas as variáveis detectadas
 │   └── .env.production.example
-├── supabase/               ← somente se Supabase detectado
+├── supabase/                         # somente se Supabase detectado
 │   ├── migrations/*.sql
-│   └── functions/
-├── deploy/
-│   └── deploy-instructions.md
+│   └── functions/<nome>/
 ├── docker/
-│   ├── Dockerfile
+│   ├── Dockerfile                    # multi-estágio, otimizado para a stack
 │   ├── docker-compose.yml
 │   └── .dockerignore
+├── deploy/
+│   └── deploy-instructions.md        # comandos prontos para copiar
 ├── execution/
 │   ├── execution-plan.json
-│   └── dry-run.md
+│   └── dry-run.md                    # preview sem executar nada
 ├── remote/
-│   ├── remote-execution-plan.json
+│   ├── remote-execution-plan.json    # plano SSH completo
 │   └── remote-dry-run.md
 └── reports/
     └── migration-summary.json
 ```
 
+---
+
+## Pipeline
+
+Cada comando executa as fases anteriores mais a sua:
+
+```
+inspect   → carrega arquivos
+analyze   → detecta stack, framework, env vars, Supabase
+plan      → gera estratégia de deploy e lista de riscos
+validate  → verifica segurança — bloqueia migrações inseguras
+migrate   → gera artefatos (env, SQL, instruções)
+deploy    → gera Dockerfile + docker-compose
+execute   → verifica ambiente + gera plano de execução
+remote    → planeja deploy remoto (sem SSH real)
+```
+
+```bash
+# Apenas análise
+lovable-migrate analyze ./projeto
+
+# Gerar Dockerfile + artefatos
+lovable-migrate deploy ./projeto --output ./output
+
+# Com planejamento remoto
+lovable-migrate remote ./projeto \
+  --ssh-host meu-servidor.com \
+  --ssh-user deploy \
+  --remote-path /opt/minha-app
+```
+
+---
+
+## Stacks suportadas
+
+| Framework | Build System | Deploy Strategy |
+|---|---|---|
+| React | Vite, CRA, Webpack | Static (nginx) |
+| Vue 3 | Vite | Static (nginx) |
+| Svelte / SvelteKit | Vite | Static (nginx) |
+| Next.js | Next | Node Server |
+| Node API | — | Docker (node) |
+| Static HTML | — | Static (nginx) |
+
+**Package managers:** npm, yarn, pnpm, bun
+
+**Integrações detectadas automaticamente:** Supabase (auth, storage, migrations, edge functions), Tailwind, Shadcn/ui
+
+---
+
+## TUI — Wizard interativo
+
+```bash
+lovable-migrate ui
+```
+
+O wizard guia você por cada fase com revisão interativa:
+
+```
+Welcome
+  → Informar caminho do projeto
+  → [Analyze + Plan automático]
+  → Revisar stack detectada
+  → Revisar plano e riscos
+  → Revisar resultado da validação
+  → Confirmar antes de escrever em disco
+  → [Migrate + Deploy + Execute + Remote]
+  → Revisar dry-run gerado
+  → Resumo final com acesso aos artefatos
+```
+
+---
+
 ## API HTTP
 
 ```bash
-lovable-migrate server
-
-# Endpoints disponíveis
-GET  /health
-GET  /version
-GET  /capabilities
-POST /analyze    { "input": "/path/to/project" }
-POST /plan       { "input": "/path/to/project" }
-POST /validate   { "input": "/path/to/project" }
-POST /migrate    { "input": "/path/to/project", "output": "./out", "force": false }
-POST /deploy     { "input": "/path/to/project", "output": "./out" }
-POST /execute    { "input": "/path/to/project", "output": "./out" }
-POST /remote     { "input": "/path/to/project", "output": "./out", "sshConfig": {...} }
+lovable-migrate server --port 3001
 ```
+
+```bash
+# Verificar saúde
+curl http://localhost:3001/health
+
+# Analisar projeto
+curl -X POST http://localhost:3001/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"input": "/path/to/projeto"}'
+
+# Pipeline completo
+curl -X POST http://localhost:3001/deploy \
+  -H "Content-Type: application/json" \
+  -d '{"input": "/path/to/projeto", "output": "./output/meu-projeto"}'
+```
+
+**Endpoints disponíveis:** `/health` · `/version` · `/capabilities` · `/analyze` · `/plan` · `/validate` · `/migrate` · `/deploy` · `/execute` · `/remote`
+
+Documentação completa: [docs/api.md](docs/api.md)
+
+---
+
+## Filosofia
+
+### O projeto original nunca é modificado
+
+Todos os artefatos são gerados em um diretório de saída separado. O `lovable-migrate` lê o projeto, analisa, e escreve apenas em `--output`. Jamais toca nos arquivos originais.
+
+### Dry-run por padrão
+
+Antes de qualquer operação real, o pipeline gera um `dry-run.md` com preview de tudo que seria executado. Você revisa antes de confirmar.
+
+### Conservador por design
+
+Se não há dados suficientes para uma decisão segura, o planner usa `confidence: unknown` e lista riscos explicitamente. Sem suposições silenciosas.
+
+### Sandbox de execução
+
+O runtime executa apenas uma whitelist estrita de executáveis (`node`, `npm`, `npx`, `pnpm`, `yarn`, `bun`, `docker`) com `shell: false` — injeção via argumentos é impossível ao nível do SO.
+
+### Validação explícita
+
+A fase `validate` pode bloquear o pipeline com `safeToMigrate: false`. Para prosseguir em casos onde você sabe o que está fazendo (ex: env vars ainda não configuradas), use `--force`.
+
+---
+
+## Arquitetura
+
+```
+ProjectContext (imutável — espinha dorsal do pipeline)
+     │
+     ├── analyzeContext()   → AnalysisReport
+     │     DetectorRegistry (10 detectores independentes)
+     │
+     ├── planContext()      → MigrationPlan
+     │     PlannerRegistry (7 strategies)
+     │
+     ├── validateContext()  → ValidationResult
+     │     ValidationRegistry (7 rules)
+     │
+     ├── migrateContext()   → MigrationResult     [escreve disk]
+     ├── deployContext()    → DeployState          [escreve disk]
+     ├── executeContext()   → ExecutionState       [escreve disk]
+     ├── runContext()       → RuntimeState         [executa comandos]
+     └── prepareContext()   → RemoteState          [planejamento puro]
+
+Camadas de transporte (sem lógica de domínio):
+     ├── CLI     — Commander
+     ├── API     — Fastify (thin layer)
+     └── TUI     — Ink/React (wizard)
+```
+
+Cada fase recebe `ProjectContext` e retorna **novo** contexto via spread — imutabilidade garantida. Adicionar uma fase nova não requer alterar o orquestrador.
+
+Documentação detalhada: [docs/architecture.md](docs/architecture.md) · [docs/architecture-overview.md](docs/architecture-overview.md)
+
+---
+
+## Exemplos
+
+Veja a pasta [`examples/`](examples/) para projetos funcionais:
+
+| Exemplo | Stack | Demonstra |
+|---|---|---|
+| [`strat-forge-pro`](examples/strat-forge-pro/) | React + Vite + Supabase + Bun | Projeto real exportado do Lovable.dev |
+| [`vite-react`](examples/vite-react/) | React + Vite + TypeScript | Caso mais comum — deploy static |
+| [`next-supabase`](examples/next-supabase/) | Next.js + Supabase | Deploy node-server + banco |
+| [`minimal-static`](examples/minimal-static/) | HTML + JS | Projeto mínimo sem framework |
+| [`vue-vite`](examples/vue-vite/) | Vue 3 + Vite | Stack alternativa |
+| [`node-api`](examples/node-api/) | Node.js + Express | Backend sem frontend |
+
+---
+
+## Roadmap
+
+| Status | Item |
+|---|---|
+| ✅ | Analyze — detecção de stack, framework, Supabase |
+| ✅ | Plan — estratégia de deploy e plano de migração |
+| ✅ | Validate — gate de segurança com bloqueio explícito |
+| ✅ | Migrate — geração de artefatos filesystem |
+| ✅ | Deploy — Dockerfile + docker-compose multi-estágio |
+| ✅ | Execute — verificação de ambiente + plano de execução |
+| ✅ | Runtime — build local controlado com sandbox |
+| ✅ | Remote — planejamento de deploy remoto |
+| ✅ | API HTTP — Fastify com rate limiting |
+| ✅ | TUI — wizard interativo (Ink/React) |
+| 🔲 | Re-sync — re-sincronização com Lovable/Supabase |
+| 🔲 | Hostinger integration — deploy automático em VPS |
+| 🔲 | GitHub Actions generator — CI/CD pronto para uso |
+| 🔲 | Supabase CLI integration — execute migrations automaticamente |
+
+Roadmap completo: [ROADMAP.md](ROADMAP.md)
+
+---
+
+## Segurança
+
+- Nenhuma fase modifica o projeto original
+- Toda escrita em disco valida que o path está dentro do `outputDir`
+- Runtime usa sandbox com whitelist de executáveis e `shell: false`
+- Remote não abre conexões SSH reais
+- API valida schema e bloqueia campos extras por padrão
+- Rate limiting padrão: 200 req/min por IP
+
+Para reportar vulnerabilidades: [SECURITY.md](SECURITY.md)
+
+---
+
+## Contribuindo
+
+Contribuições são bem-vindas! Veja [CONTRIBUTING.md](CONTRIBUTING.md) para o guia completo.
+
+```bash
+git clone https://github.com/your-org/lovable-migrate
+cd lovable-migrate
+npm install
+npm run dev -- analyze ./examples/vite-react
+```
+
+---
 
 ## Documentação
 
-- [Primeiros passos](docs/getting-started.md)
-- [Arquitetura](docs/architecture.md)
-- [CLI — referência completa](docs/cli.md)
-- [API HTTP](docs/api.md)
-- [TUI](docs/tui.md)
-- [Runtime e execução segura](docs/runtime.md)
-- [Deploy remoto](docs/remote.md)
-- [Desenvolvimento e contribuição](docs/development.md)
+| Documento | Descrição |
+|---|---|
+| [Primeiros passos](docs/getting-started.md) | Instalação e primeiro projeto |
+| [CLI — referência](docs/cli.md) | Todos os comandos e flags |
+| [API HTTP](docs/api.md) | Endpoints e envelopes de resposta |
+| [TUI](docs/tui.md) | Wizard interativo — navegação e atalhos |
+| [Arquitetura](docs/architecture.md) | Pipeline, módulos e decisões de design |
+| [Visão geral pública](docs/architecture-overview.md) | Arquitetura para contribuidores |
+| [Runtime](docs/runtime.md) | Execução segura — sandbox e whitelist |
+| [Deploy remoto](docs/remote.md) | Planejamento SSH e host profiles |
+| [Desenvolvimento](docs/development.md) | Setup, testes e como adicionar fases |
+
+---
 
 ## Licença
 
-MIT
+[MIT](LICENSE) — © 2026 lovable-migrate contributors

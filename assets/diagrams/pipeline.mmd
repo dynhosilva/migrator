@@ -1,0 +1,23 @@
+flowchart TD
+    INPUT["📁 Input\n(pasta, ZIP, .git)"] --> RESOLVE["resolveSource()"]
+    RESOLVE --> LOAD["source.load()\n→ ProjectFile[]"]
+    LOAD --> CTX["createContext()\n→ ProjectContext"]
+
+    CTX --> ANALYZE["analyzeContext()\nDetectorRegistry × 10\n→ AnalysisReport"]
+    ANALYZE --> PLAN["planContext()\nPlannerRegistry × 7\n→ MigrationPlan"]
+    PLAN --> VALIDATE["validateContext()\nValidationRegistry × 7\n→ ValidationResult"]
+
+    VALIDATE -->|"safeToMigrate: false\n(sem --force)"| BLOCKED["🚫 Bloqueado"]
+    VALIDATE -->|"safeToMigrate: true\nou --force"| MIGRATE
+
+    MIGRATE["migrateContext()\n→ env, SQL, instruções\n[escreve disk]"]
+    MIGRATE --> DEPLOY["deployContext()\n→ Dockerfile, compose\n[escreve disk]"]
+    DEPLOY --> EXECUTE["executeContext()\n→ execution-plan.json\ndry-run.md [escreve disk]"]
+    EXECUTE --> RUNTIME["runContext()\nnpm install + build\ndocker build [executa]"]
+    RUNTIME --> REMOTE["prepareContext()\n→ remote-plan.json\nremote-dry-run.md"]
+
+    REMOTE --> OUTPUT["📦 output/<projeto>/\nenv/ docker/ execution/\nruntime/ remote/ reports/"]
+
+    style BLOCKED fill:#ff6b6b,color:#fff
+    style OUTPUT fill:#51cf66,color:#fff
+    style VALIDATE fill:#ffd43b,color:#333

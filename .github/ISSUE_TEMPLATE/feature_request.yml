@@ -1,0 +1,56 @@
+name: Feature Request
+description: Sugira uma nova capacidade ou melhoria
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de sugerir, verifique o [ROADMAP.md](../../ROADMAP.md) e as [discussions](https://github.com/your-org/lovable-migrate/discussions) para ver se já existe algo planejado.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Pipeline (nova fase)
+        - Detector (nova stack detectada)
+        - CLI (novo comando ou flag)
+        - API HTTP (novo endpoint)
+        - TUI (nova tela ou comportamento)
+        - Runtime (nova execução suportada)
+        - Documentação
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema que você quer resolver
+      description: Descreva o caso de uso real. Qual é a dificuldade atual?
+      placeholder: "Quando migro um projeto Next.js com Supabase, preciso manualmente..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solução proposta
+      description: Como você imagina que isso funcionaria?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Quais outras abordagens você considerou?
+
+  - type: dropdown
+    id: willing-to-contribute
+    attributes:
+      label: Você estaria disposto a contribuir com a implementação?
+      options:
+        - "Sim"
+        - "Talvez, com orientação"
+        - "Não"
