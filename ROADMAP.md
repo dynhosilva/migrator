@@ -23,7 +23,7 @@ Pipeline completo de análise → geração de artefatos → planejamento de dep
 | ✅ API HTTP | Fastify — 8 endpoints, rate limiting, schema validation |
 | ✅ TUI | Wizard interativo — Ink/React, 12 telas |
 | ✅ CLI | 10 comandos com flags documentadas |
-| ✅ CI/CD | GitHub Actions — Node 18/20/22, release pipeline |
+| ✅ CI/CD | GitHub Actions — Node 20/22, release pipeline |
 | ✅ Docs | 9 documentos técnicos + README + CONTRIBUTING |
 
 ---

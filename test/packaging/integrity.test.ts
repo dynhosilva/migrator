@@ -41,9 +41,9 @@ describe('package.json — campos de distribuição', () => {
     expect(files).toContain('dist/');
   });
 
-  it('tem campo engines com node >= 18', () => {
+  it('tem campo engines com node >= 20', () => {
     const engines = pkg.engines as Record<string, string>;
-    expect(engines.node).toMatch(/18/);
+    expect(engines.node).toMatch(/20/);
   });
 
   it('tem campo license', () => {

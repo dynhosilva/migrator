@@ -6,7 +6,7 @@
 npm install -g lovable-migrate
 ```
 
-**Requisito:** Node.js >= 18.0.0
+**Requisito:** Node.js >= 20.0.0
 
 Para verificar:
 ```bash

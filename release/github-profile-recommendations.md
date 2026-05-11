@@ -84,7 +84,7 @@ Os badges atuais no README já estão configurados. Verificar que os links estã
 [![npm version](https://img.shields.io/npm/v/lovable-migrate.svg)](https://www.npmjs.com/package/lovable-migrate)
 [![CI](https://github.com/your-org/lovable-migrate/actions/workflows/ci.yml/badge.svg)](...)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](...)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](...)
 ```
 
 Substituir `your-org` pelo org/username real do GitHub.

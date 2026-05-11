@@ -19,7 +19,7 @@
 | `main` | ✅ | `dist/index.js` |
 | `exports` | ✅ | `"."` → `./dist/index.js` |
 | `files` | ✅ | `["dist/", "README.md", "LICENSE"]` |
-| `engines` | ✅ | `node >= 18.0.0` |
+| `engines` | ✅ | `node >= 20.0.0` |
 | `license` | ✅ | `MIT` |
 | `keywords` | ✅ | 7 keywords relevantes |
 | `prepublishOnly` | ✅ | typecheck + test + build |
@@ -31,7 +31,7 @@
 | `npm run build` | ✅ | Compila sem erros |
 | `npm run typecheck` | ✅ | Zero erros em `src/` |
 | `npm run typecheck:test` | ✅ | Zero erros em `test/` |
-| Target ES2020 / commonjs | ✅ | Compatível com Node 18+ |
+| Target ES2020 / commonjs | ✅ | Compatível com Node 20+ |
 | `tsconfig.json` `"jsx": "react"` | ✅ | Necessário para TUI TSX |
 | Shebang em `dist/cli.js` | ✅ | `#!/usr/bin/env node` via Commander |
 
@@ -54,7 +54,7 @@
 
 | Item | Status | Detalhe |
 |---|---|---|
-| `.github/workflows/ci.yml` | ✅ | Node matrix [18, 20, 22] |
+| `.github/workflows/ci.yml` | ✅ | Node matrix [20, 22] |
 | `.github/workflows/release.yml` | ✅ | Trigger em tags `v*.*.*` |
 | Validação de semver no CI | ✅ | Regex + comparação com package.json |
 | `npm publish --dry-run` | ✅ | Executa antes do release real |

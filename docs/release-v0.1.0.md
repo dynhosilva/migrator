@@ -138,7 +138,7 @@ A fase remote modela e planeja — nunca abre conexões. Todos os comandos são 
 - **TypeScript strict** — sem `any` não documentado
 - **233 testes** — integração, snapshots, TUI, packaging
 - **Vitest** — runner com snapshot determinístico multiplataforma
-- **GitHub Actions** — CI com Node matrix [18, 20, 22]
+- **GitHub Actions** — CI com Node matrix [20, 22]
 - **Release pipeline** — tags semânticas → `npm publish` automático
 
 ---

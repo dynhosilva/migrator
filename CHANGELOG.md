@@ -36,7 +36,7 @@ Primeira versão pública do `lovable-migrate` — engine completa de migração
 
 - TypeScript strict — compilação ES2020/CommonJS
 - 233 testes (Vitest) — integração, snapshots, TUI, packaging
-- CI/CD — GitHub Actions com Node matrix [18, 20, 22]
+- CI/CD — GitHub Actions com Node matrix [20, 22]
 - Release pipeline — tags semânticas → `npm publish` automático
 - Documentação completa — 9 documentos em `docs/`
 

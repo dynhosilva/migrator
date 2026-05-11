@@ -9,7 +9,7 @@ npm install
 npm run build
 ```
 
-**Requisito:** Node.js >= 18.0.0
+**Requisito:** Node.js >= 20.0.0
 
 ## Scripts disponíveis
 
@@ -202,4 +202,4 @@ node dist/cli.js --version
 node dist/cli.js --help
 ```
 
-Ver `.github/workflows/ci.yml` para a configuração completa (Node matrix: 18, 20, 22).
+Ver `.github/workflows/ci.yml` para a configuração completa (Node matrix: 20, 22).

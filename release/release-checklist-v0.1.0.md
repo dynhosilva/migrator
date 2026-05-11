@@ -21,7 +21,7 @@ Checklist completo para o lançamento público do `lovable-migrate@0.1.0`.
 - [x] `npm pack --dry-run` — 607 arquivos, 170.2 kB comprimido
 - [x] Campo `files` correto — inclui `dist/`, `README.md`, `LICENSE`
 - [x] Campo `bin` correto — `lovable-migrate` → `dist/cli.js`
-- [x] Campo `engines` — `node >= 18.0.0`
+- [x] Campo `engines` — `node >= 20.0.0`
 - [x] Campo `exports` — `"."` → `./dist/index.js`
 - [x] Campo `license` — `MIT`
 - [x] Campo `repository`, `homepage`, `bugs` preenchidos
@@ -55,13 +55,13 @@ Checklist completo para o lançamento público do `lovable-migrate@0.1.0`.
 
 ## GitHub
 
-- [x] `.github/workflows/ci.yml` — Node matrix [18, 20, 22]
+- [x] `.github/workflows/ci.yml` — Node matrix [20, 22]
 - [x] `.github/workflows/release.yml` — trigger em `v*.*.*`
 - [x] `.github/ISSUE_TEMPLATE/bug_report.yml`
 - [x] `.github/ISSUE_TEMPLATE/feature_request.yml`
 - [x] `.github/ISSUE_TEMPLATE/config.yml`
 - [x] `.github/PULL_REQUEST_TEMPLATE.md`
-- [ ] CI passando em Node 18, 20 e 22 no GitHub
+- [ ] CI passando em Node 20 e 22 no GitHub
 - [ ] Release workflow testado com tag dry-run
 - [ ] Branch `main` protegido (require PR, require CI)
 - [ ] Topics do repositório configurados

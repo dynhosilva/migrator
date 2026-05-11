@@ -779,7 +779,7 @@ O campo `"files"` em `package.json` controla o conteúdo do pacote publicado:
 
 | Workflow | Trigger | O que faz |
 |---|---|---|
-| `ci.yml` | push/PR em qualquer branch | typecheck, test, build, verify CLI — Node matrix [18, 20, 22] |
+| `ci.yml` | push/PR em qualquer branch | typecheck, test, build, verify CLI — Node matrix [20, 22] |
 | `release.yml` | push de tag `v*.*.*` | valida semver, `npm publish --dry-run`, cria GitHub Release |
 
 **Nunca fazer `npm publish` manual** — o release workflow cuida disso com validações de segurança.

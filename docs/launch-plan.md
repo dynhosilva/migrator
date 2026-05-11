@@ -33,7 +33,7 @@ O GitHub Release é o ponto de partida — sem ele, o npm não tem versão publi
 
 ### Pré-condições
 
-- [ ] CI verde em `main` (Node 18, 20, 22)
+- [ ] CI verde em `main` (Node 20, 22)
 - [ ] `npm run typecheck` passa
 - [ ] `npm test` passa (233 testes)
 - [ ] `npm run build` gera `dist/` limpo
@@ -155,7 +155,7 @@ TypeScript strict + 233 testes + Vitest
 Ink v3 (TUI) + Fastify (HTTP API)
 Pipeline imutável — cada fase retorna novo contexto
 Registry pattern — adicionar detector sem tocar orquestrador
-CI: Node 18/20/22 + npm publish automático via tag semântica
+CI: Node 20/22 + npm publish automático via tag semântica
 
 Open source: github.com/your-org/lovable-migrate
 ```

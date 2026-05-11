@@ -40,7 +40,7 @@ node dist/cli.js --version
 node dist/cli.js analyze ./examples/vite-react
 ```
 
-**Requisitos:** Node.js >= 18.0.0, npm
+**Requisitos:** Node.js >= 20.0.0, npm
 
 ---
 
@@ -194,7 +194,7 @@ Fixtures são somente leitura — nunca escreva em `test/fixtures/` a partir dos
 ## Processo de review
 
 - Todo PR requer aprovação de um maintainer
-- Testes devem passar no CI (Node 18, 20, 22)
+- Testes devem passar no CI (Node 20, 22)
 - Snapshots devem ser atualizados se o output mudou intencionalmente (`npm run test:snapshots`)
 - Documentação deve ser atualizada junto com a feature
 - CLAUDE.md deve ser atualizado se regras arquiteturais mudaram

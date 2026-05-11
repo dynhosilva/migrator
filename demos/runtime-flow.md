@@ -6,7 +6,7 @@ Execução local controlada: `npm install`, `npm run build` e `docker build`.
 
 ## Pré-requisitos
 
-- Node.js >= 18 instalado
+- Node.js >= 20 instalado
 - Docker instalado e rodando (para o passo `docker build`)
 - Projeto com script `build` no `package.json`
 
