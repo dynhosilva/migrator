@@ -19,7 +19,8 @@ function walk(
   currentPath: string,
   isIgnored: (segment: string) => boolean
 ): ProjectFile[] {
-  const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+  const entries = fs.readdirSync(currentPath, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name));
   const files: ProjectFile[] = [];
 
   for (const entry of entries) {

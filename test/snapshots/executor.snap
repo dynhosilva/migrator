@@ -31,9 +31,9 @@ exports[`Executor — react-vite (static + npm) > ExecutionState normalizado cor
 
 | Ferramenta | Disponível | Versão |
 |---|---|---|
-| Node.js | ✓ | v24.14.0 |
+| Node.js | ✓ | <VERSION> |
 | Docker | ✗ | — |
-| npm | ✓ | 11.9.0 |
+| npm | ✓ | <VERSION> |
 
 ## Passos de execução
 
@@ -86,9 +86,9 @@ _Gerado em: <TIMESTAMP>_
       },
     ],
     "nodeAvailable": true,
-    "nodeVersion": "v24.14.0",
+    "nodeVersion": "<VERSION>",
     "packageManagerAvailable": true,
-    "packageManagerVersion": "11.9.0",
+    "packageManagerVersion": "<VERSION>",
   },
   "executedAt": "<TIMESTAMP>",
   "outputDir": "<OUTPUT_DIR>",
@@ -158,7 +158,7 @@ _Gerado em: <TIMESTAMP>_
   },
   "projectName": "react-vite",
   "runtimeCheck": {
-    "detectedNodeVersion": "v24.14.0",
+    "detectedNodeVersion": "<VERSION>",
     "issues": [],
     "nodeVersionOk": true,
     "requiredNodeVersion": ">= 18",
@@ -189,9 +189,9 @@ exports[`Executor — react-vite (static + npm) > dry-run.md normalizado corresp
 
 | Ferramenta | Disponível | Versão |
 |---|---|---|
-| Node.js | ✓ | v24.14.0 |
+| Node.js | ✓ | <VERSION> |
 | Docker | ✗ | — |
-| npm | ✓ | 11.9.0 |
+| npm | ✓ | <VERSION> |
 
 ## Passos de execução
 
