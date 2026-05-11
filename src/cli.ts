@@ -15,13 +15,14 @@ import { startTui }        from './tui';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
+import { VERSION }         from './version';
 
 const program = new Command();
 
 program
   .name('lovable-migrate')
   .description('Migration engine for Lovable.dev exported projects')
-  .version('0.1.0');
+  .version(VERSION);
 
 program
   .command('inspect <input>')

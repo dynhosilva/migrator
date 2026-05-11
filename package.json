@@ -1,21 +1,45 @@
 {
   "name": "lovable-migrate",
   "version": "0.1.0",
-  "description": "Migration engine for Lovable.dev exported projects",
+  "description": "Migration engine for Lovable.dev exported projects — analyze, plan, validate, migrate, deploy",
   "type": "commonjs",
   "main": "dist/index.js",
   "bin": {
     "lovable-migrate": "dist/cli.js"
   },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "lovable",
+    "migration",
+    "deploy",
+    "supabase",
+    "docker",
+    "cli",
+    "self-hosted"
+  ],
+  "license": "MIT",
   "scripts": {
     "build": "tsc",
+    "build:clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
     "dev": "ts-node src/cli.ts",
     "start": "node dist/cli.js",
     "typecheck": "tsc --noEmit",
     "typecheck:test": "tsc --project tsconfig.test.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:snapshots": "vitest run -u"
+    "test:snapshots": "vitest run -u",
+    "test:dist": "vitest run test/packaging/",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",

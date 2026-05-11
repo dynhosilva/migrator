@@ -736,3 +736,65 @@ Para adicionar novo teste de snapshot: usar `normalizeOutput()` antes de `toMatc
 - Não chamar `runCommand` diretamente nas tasks de runtime — sempre passar por `runSafeCommand` do `sandbox.ts` para garantir validação de whitelist.
 - Não adicionar executáveis à whitelist sem revisão explícita — cada adição amplia a superfície de ataque do runtime.
 - Não rodar `npm install` no diretório original do fixture em testes — copiar o fixture para um temp dir primeiro (`fs.cpSync`) para manter as fixtures somente-leitura.
+- Não adicionar lógica de domínio em telas TUI — toda decisão fica em `usePipeline` ou na engine.
+- Não chamar funções da engine diretamente em screens TUI — sempre via `usePipeline`.
+
+## Distribuição e release
+
+### Versioning
+
+A versão é lida dinamicamente de `package.json` via `src/version.ts`:
+
+```typescript
+import pkg from '../package.json';
+export const VERSION: string = pkg.version;
+```
+
+O CLI usa `VERSION` via `.version(VERSION)` no Commander — nunca hardcode a versão no código.
+
+Para criar um release: atualizar `package.json` → criar tag `vX.Y.Z` → push da tag → CI faz o resto.
+
+### Build pipeline
+
+```bash
+npm run typecheck          # 1. verificar tipos
+npm run typecheck:test     # 2. verificar tipos dos testes
+npm test                   # 3. rodar testes
+npm run build              # 4. compilar para dist/
+npm run test:dist          # 5. verificar integridade do pacote
+```
+
+`prepublishOnly` garante que steps 1-4 rodam automaticamente antes de `npm publish`.
+
+### Pacote npm — o que é incluído
+
+O campo `"files"` em `package.json` controla o conteúdo do pacote publicado:
+- `dist/` — código compilado (TypeScript → JS)
+- `README.md` — documentação principal
+- `LICENSE` — licença MIT
+
+`src/`, `test/`, `docs/`, `.github/` **não são incluídos** no pacote publicado.
+
+### CI/CD
+
+| Workflow | Trigger | O que faz |
+|---|---|---|
+| `ci.yml` | push/PR em qualquer branch | typecheck, test, build, verify CLI — Node matrix [18, 20, 22] |
+| `release.yml` | push de tag `v*.*.*` | valida semver, `npm publish --dry-run`, cria GitHub Release |
+
+**Nunca fazer `npm publish` manual** — o release workflow cuida disso com validações de segurança.
+
+### Packaging tests
+
+`test/packaging/` contém testes de integridade que verificam a distribuição:
+- `integrity.test.ts` — valida `package.json` fields e estrutura de `dist/`
+- `cli.test.ts` — valida CLI binary, shebang, `--version`, `--help`
+
+Esses testes usam `it.skipIf(!distExists())` — passam silenciosamente em checkout limpo, executam completos após `npm run build`.
+
+### Adicionando novos campos ao package.json
+
+Ao adicionar campos relevantes para distribuição (`repository`, `homepage`, `funding`):
+- Adicionar em `package.json`
+- Atualizar `test/packaging/integrity.test.ts` se o campo for verificável
+- Não adicionar campos que não serão publicados (ex: configs de editor) — eles aumentam o tamanho do pacote
