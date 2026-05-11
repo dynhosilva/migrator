@@ -7,23 +7,28 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildApp }                                  from '../../src/server/app';
-import type { FastifyInstance }                      from 'fastify';
+import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { makeTempDir, removeTempDir, fixturePath }   from '../helpers/pipeline';
 import { normalizeOutput, normalizeTimestamps }       from '../helpers/normalize';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function post(app: FastifyInstance, url: string, body: unknown) {
+// Fastify v5 inject() returns a Chain (thenable) — cast to typed Promise.
+function post(
+  app: FastifyInstance,
+  url: string,
+  body: Record<string, unknown>,
+): Promise<LightMyRequestResponse> {
   return app.inject({
     method:  'POST',
     url,
-    payload: body,
+    payload: body as Record<string, unknown>,
     headers: { 'content-type': 'application/json' },
-  });
+  }) as unknown as Promise<LightMyRequestResponse>;
 }
 
-function get(app: FastifyInstance, url: string) {
-  return app.inject({ method: 'GET', url });
+function get(app: FastifyInstance, url: string): Promise<LightMyRequestResponse> {
+  return app.inject({ method: 'GET', url }) as unknown as Promise<LightMyRequestResponse>;
 }
 
 // ─── GET /health ──────────────────────────────────────────────────────────────

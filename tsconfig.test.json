@@ -4,6 +4,6 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["src/**/*", "test/helpers/**/*", "test/integration/**/*"],
+  "include": ["src/**/*", "test/helpers/**/*", "test/integration/**/*", "test/tui/**/*"],
   "exclude": ["node_modules", "dist", "test/fixtures"]
 }

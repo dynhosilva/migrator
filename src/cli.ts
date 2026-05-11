@@ -11,6 +11,7 @@ import { executeContext }  from './executor';
 import { runContext }      from './runtime';
 import { prepareContext }  from './remote';
 import { startServer }     from './server';
+import { startTui }        from './tui';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -423,6 +424,13 @@ program
       logger.error((err as Error).message);
       process.exit(1);
     }
+  });
+
+program
+  .command('ui')
+  .description('Inicia a TUI interativa (Terminal UI) para wizard de migração')
+  .action(() => {
+    startTui();
   });
 
 program

@@ -18,6 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ✅ Execute v1 | `src/executor/` | Verifica ambiente + valida artefatos + gera plano de execução e dry-run |
 | ✅ Runtime v1 | `src/runtime/` | Execução local real: install, build, docker build + logs estruturados |
 | ✅ Remote v1 | `src/remote/` | Planejamento de deploy remoto — modelagem pura, sem SSH real |
+| ✅ API Layer | `src/server/` | HTTP API via Fastify — thin layer sobre a engine, sem lógica de domínio |
+| ✅ TUI v1 | `src/tui/` | Terminal UI interativa (Ink/React) — wizard de migração end-to-end |
 | 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
 
 Integrações externas planejadas: **Supabase** (migrations, auth, edge functions) e **Hostinger** (deploy de VPS).
@@ -25,13 +27,15 @@ Integrações externas planejadas: **Supabase** (migrations, auth, edge function
 ## Commands
 
 ```bash
-npm run build        # compila TypeScript → dist/
-npm run dev          # executa CLI via ts-node (sem build)
-npm run typecheck    # verifica tipos sem emitir arquivos
-npm start            # executa o build compilado
+npm run build            # compila TypeScript → dist/
+npm run dev              # executa CLI via ts-node (sem build)
+npm run typecheck        # verifica tipos sem emitir arquivos
+npm run typecheck:test   # verifica tipos dos arquivos de teste
+npm start                # executa o build compilado
+npm test                 # executa todos os testes (CI)
+npm run test:watch       # modo interativo (desenvolvimento)
+npm run test:snapshots   # atualiza snapshots
 ```
-
-Não há test runner nem linter configurado.
 
 Ao passar argumentos para o CLI via `npm run dev`, use `--` para separar flags do npm das flags da CLI:
 
@@ -43,17 +47,121 @@ npm run dev -- plan    <input> [-v|--verbose] [-f|--format terminal|json]
 npm run dev -- validate <input> [-v|--verbose] [-f|--format terminal|json]
 npm run dev -- migrate <input> [-v|--verbose] [-f|--format terminal|json] [-o|--output <dir>] [--force]
 
+# TUI interativa (wizard completo)
+npm run dev -- ui
+
+# Servidor HTTP da API
+npm run dev -- server [--port 3001] [--host 127.0.0.1]
+
 # Via build compilado
 npm start migrate <input> --output ./output/meu-projeto
 
 # Após instalação global
 npm install -g .
 lovable-migrate migrate /path/to/project -o ./output/meu-projeto
+lovable-migrate ui
 ```
 
 `--output` define o diretório de saída (padrão: `./output/<nome-do-projeto>`). Todos os artefatos gerados vão para esse diretório — o projeto original nunca é modificado.
 
 `<input>` aceita: pasta local, arquivo `.zip`, ou diretório com `.git`.
+
+## TUI (Terminal UI)
+
+### Filosofia da TUI
+
+A TUI é uma **camada de experiência** — não de domínio. Ela não contém nenhuma lógica de negócio:
+- Chama funções públicas da engine (`analyzeContext`, `planContext`, etc.) via `usePipeline`
+- Exibe resultados e coordena o fluxo humano de revisão e confirmação
+- Nunca manipula filesystem diretamente (exceto leitura de artefatos gerados)
+- Nunca reimplementa validação, planejamento ou deploy
+
+### Separation of concerns
+
+| Camada | Responsabilidade |
+|---|---|
+| `src/tui/state/` | Estado da sessão — reducer puro, sem I/O |
+| `src/tui/hooks/` | Orquestração: `usePipeline` chama engine; `useNavigation` troca de tela |
+| `src/tui/components/` | Componentes Ink reutilizáveis — somente visualização |
+| `src/tui/screens/` | Telas compostas — coordenam componentes e hooks |
+| `src/tui/theme/` | Paleta de cores e símbolos — centralizada |
+| `src/tui/app.tsx` | Router raiz — mapeia `session.screen` → screen component |
+| `src/tui/index.ts` | Entry point — exporta `startTui()` |
+
+### Stack técnica
+
+- **Ink v3.2.0** — única versão compatível com `"module": "commonjs"`. Ink v4+ é ESM-only.
+- **React 17** — peer dependency do Ink v3.
+- **ink-testing-library v2.1.0** — biblioteca de testes para Ink v3.
+- Testes de keyboard input com Ink v3 requerem `await new Promise(r => setTimeout(r, 20))` antes de `stdin.write()` para aguardar `useEffect` registrar o listener.
+
+### Fluxo de navegação
+
+```
+Welcome → ProjectSelect → [PhaseRunner: analyze+plan] → AnalyzeReview
+                                                               ↓
+                                              [PhaseRunner: validate] → PlanReview → RiskReview
+                                                                                         ↓
+                                                                                  ValidateReview
+                                                                                         ↓
+                                                                                  ConfirmScreen
+                                                                                         ↓
+                                                              [PhaseRunner: migrate+deploy+execute+remote]
+                                                                                         ↓
+                                                                                  DryRunReview → Summary
+                                                                                                    ↓
+                                                                                           ArtifactBrowser
+```
+
+### Estado da sessão (`TuiSession`)
+
+```typescript
+interface TuiSession {
+  screen:      Screen;          // tela atual
+  inputPath:   string;          // caminho do projeto
+  outputDir:   string;          // diretório de saída
+  force:       boolean;         // --force flag
+  ctx:          ProjectContext | null; // contexto enriquecido atual
+  phases:       PhaseState;     // status de cada fase (idle|running|done|failed)
+  activePhase:  string | null;  // fase em execução agora
+  error:        string | null;  // mensagem de erro atual
+  logs:         string[];       // últimas 100 linhas de log
+}
+```
+
+O `tuiReducer` é puro — mesmo input → mesmo output. Toda mutação de estado via `dispatch(action)`.
+
+### `usePipeline` — desacoplamento total
+
+`usePipeline(dispatch)` é o único ponto onde a TUI toca a engine:
+- Cada função chama o módulo público da engine (`analyzeContext`, `planContext`, etc.)
+- Em caso de erro, despacha `SET_ERROR` e retorna `null`
+- Despacha `SET_PHASE` para atualizar o indicador de progresso
+- Nunca contém lógica de decisão de negócio
+
+### Testes da TUI
+
+```
+test/tui/
+├── navigation.test.ts           # reducer + ações de estado (45 assertions)
+├── render.test.tsx              # Header, StatusBadge, LogViewer
+└── components/
+    ├── IssueList.test.tsx       # renderização de riscos com severidades
+    ├── StepProgress.test.tsx    # exibição de progresso por fase
+    └── ConfirmPrompt.test.tsx   # fluxo de confirmação (render + keyboard)
+```
+
+**Nota sobre testes de teclado com Ink v3:** `useInput` registra listeners via `useEffect`. Em testes, é necessário `await new Promise(r => setTimeout(r, 20))` após o render e antes de `stdin.write()` para garantir que o listener foi registrado. `setImmediate` não é suficiente na primeira instância Ink criada.
+
+### Regras da TUI
+
+- **Não adicionar lógica de domínio em screens ou components** — toda decisão fica em `usePipeline` ou na engine.
+- **Não chamar funções da engine diretamente em screens** — sempre via `usePipeline`.
+- **Não manipular filesystem em screens** — exceto leitura de artefatos gerados (ArtifactBrowser, DryRunReview).
+- **Screens não se importam entre si** — comunicação via `nav.goTo()` e estado da sessão.
+- **Components são puros e reutilizáveis** — sem hooks de pipeline ou navegação.
+- **Para adicionar nova tela**: criar em `screens/`, registrar no router em `app.tsx`. Sem mais alterações.
+- **Para adicionar novo componente**: criar em `components/`, usar apenas Ink + theme.
 
 ## Arquitetura
 
