@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.js.map
 .env
+!test/fixtures/**/.env
 *.log
 
 # Output de migração gerado em runtime — nunca versionar

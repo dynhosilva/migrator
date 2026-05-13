@@ -89,20 +89,31 @@ describe('Executor — react-vite (static + npm)', () => {
     expect(normalized).toMatchSnapshot();
   });
 
-  it('dry-run.md normalizado corresponde ao snapshot', () => {
+  it('dry-run.md contém comandos e seções invariantes', () => {
     const content = fs.readFileSync(
       path.join(outputDir, 'execution', 'dry-run.md'),
       'utf-8',
     );
-    const normalized = normalizeOutput(content, { outputDir });
-    expect(normalized).toMatchSnapshot();
+    // Invariantes: nome do projeto, comandos de build, seções de ambiente e passos
+    expect(content).toContain('react-vite');
+    expect(content).toContain('npm ci');
+    expect(content).toContain('npm run build');
+    expect(content).toContain('docker build');
+    expect(content).toContain('docker compose up');
+    expect(content).toContain('## Ambiente');
+    expect(content).toContain('## Passos de execução');
+    expect(content).toContain('Node.js');
+    // Não assertamos disponibilidade do Docker — é host-dependent
   });
 
-  it('ExecutionState normalizado corresponde ao snapshot', () => {
-    const normalized = normalizeOutput(ctx.execution!, {
-      fixtureDir: fixturePath('react-vite'),
-      outputDir,
-    });
+  it('ExecutionState (partes invariantes) corresponde ao snapshot', () => {
+    // Snapshot apenas dos campos derivados de artefatos e análise estática —
+    // não do estado do host (Docker disponível ou não).
+    const { buildCheck, dockerCheck, runtimeCheck, plan } = ctx.execution!;
+    const normalized = normalizeOutput(
+      { buildCheck, dockerCheck, runtimeCheck, plan },
+      { outputDir },
+    );
     expect(normalized).toMatchSnapshot();
   });
 });

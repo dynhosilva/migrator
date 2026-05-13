@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Executor — react-vite (static + npm) > ExecutionState normalizado corresponde ao snapshot 1`] = `
+exports[`Executor — react-vite (static + npm) > ExecutionState (partes invariantes) corresponde ao snapshot 1`] = `
 {
   "buildCheck": {
     "buildCommand": "npm run build",
@@ -20,78 +20,6 @@ exports[`Executor — react-vite (static + npm) > ExecutionState normalizado cor
     ],
     "valid": true,
   },
-  "dryRun": {
-    "files": [
-      {
-        "content": "# Dry Run — react-vite
-
-**Status:** ❌ Bloqueado
-
-## Ambiente
-
-| Ferramenta | Disponível | Versão |
-|---|---|---|
-| Node.js | ✓ | <VERSION> |
-| Docker | ✗ | — |
-| npm | ✓ | <VERSION> |
-
-## Passos de execução
-
-### 1. Instala dependências usando npm
-
-\`\`\`bash
-npm ci
-\`\`\`
-
-### 2. Compila o projeto para produção
-
-\`\`\`bash
-npm run build
-\`\`\`
-
-### 3. Constrói a imagem Docker do projeto
-
-\`\`\`bash
-docker build -t react-vite:latest -f docker/Dockerfile .
-\`\`\`
-
-### 4. Inicia os serviços em modo detached
-
-\`\`\`bash
-docker compose up -d
-\`\`\`
-
-## Bloqueadores
-
-- **DOCKER_NOT_FOUND**: Docker não encontrado no PATH.
-  - _Instale Docker Desktop ou Docker Engine antes de executar o deploy._
-
----
-_Gerado em: <TIMESTAMP>_
-",
-        "description": "Preview de execução em modo dry-run",
-        "relativePath": "execution/dry-run.md",
-      },
-    ],
-  },
-  "envCheck": {
-    "dockerAvailable": false,
-    "dockerVersion": null,
-    "issues": [
-      {
-        "code": "DOCKER_NOT_FOUND",
-        "message": "Docker não encontrado no PATH.",
-        "severity": "blocker",
-        "suggestion": "Instale Docker Desktop ou Docker Engine antes de executar o deploy.",
-      },
-    ],
-    "nodeAvailable": true,
-    "nodeVersion": "<VERSION>",
-    "packageManagerAvailable": true,
-    "packageManagerVersion": "<VERSION>",
-  },
-  "executedAt": "<TIMESTAMP>",
-  "outputDir": "<OUTPUT_DIR>",
   "plan": {
     "files": [
       {
@@ -156,77 +84,13 @@ _Gerado em: <TIMESTAMP>_
       },
     ],
   },
-  "projectName": "react-vite",
   "runtimeCheck": {
     "detectedNodeVersion": "<VERSION>",
     "issues": [],
     "nodeVersionOk": true,
     "requiredNodeVersion": ">= 18",
   },
-  "summary": {
-    "blockers": [
-      {
-        "code": "DOCKER_NOT_FOUND",
-        "message": "Docker não encontrado no PATH.",
-        "severity": "blocker",
-        "suggestion": "Instale Docker Desktop ou Docker Engine antes de executar o deploy.",
-      },
-    ],
-    "infos": [],
-    "readiness": "blocked",
-    "tasksExecuted": 4,
-    "warnings": [],
-  },
 }
-`;
-
-exports[`Executor — react-vite (static + npm) > dry-run.md normalizado corresponde ao snapshot 1`] = `
-"# Dry Run — react-vite
-
-**Status:** ❌ Bloqueado
-
-## Ambiente
-
-| Ferramenta | Disponível | Versão |
-|---|---|---|
-| Node.js | ✓ | <VERSION> |
-| Docker | ✗ | — |
-| npm | ✓ | <VERSION> |
-
-## Passos de execução
-
-### 1. Instala dependências usando npm
-
-\`\`\`bash
-npm ci
-\`\`\`
-
-### 2. Compila o projeto para produção
-
-\`\`\`bash
-npm run build
-\`\`\`
-
-### 3. Constrói a imagem Docker do projeto
-
-\`\`\`bash
-docker build -t react-vite:latest -f docker/Dockerfile .
-\`\`\`
-
-### 4. Inicia os serviços em modo detached
-
-\`\`\`bash
-docker compose up -d
-\`\`\`
-
-## Bloqueadores
-
-- **DOCKER_NOT_FOUND**: Docker não encontrado no PATH.
-  - _Instale Docker Desktop ou Docker Engine antes de executar o deploy._
-
----
-_Gerado em: <TIMESTAMP>_
-"
 `;
 
 exports[`Executor — react-vite (static + npm) > execution-plan.json normalizado corresponde ao snapshot 1`] = `

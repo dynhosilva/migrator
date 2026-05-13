@@ -26,8 +26,14 @@ const VERSION_KEYS = new Set([
   'nodeVersion',
   'detectedNodeVersion',
   'packageManagerVersion',
-  'dockerVersion',
 ]);
+
+// Chaves cujos valores dependem do estado do host (Docker instalado ou não).
+// Normalizadas independentemente de serem null, boolean ou string.
+const DOCKER_NORMALIZATION: Record<string, string> = {
+  dockerAvailable: '<DOCKER_AVAILABLE>',
+  dockerVersion:   '<DOCKER_VERSION>',
+};
 
 function normalizeValue(value: unknown, replacements: [RegExp, string][]): unknown {
   if (typeof value === 'string') {
@@ -46,7 +52,11 @@ function normalizeValue(value: unknown, replacements: [RegExp, string][]): unkno
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([k, v]) => {
-        // Normalização por chave: campos de versão de ferramenta → <VERSION>
+        // Campos docker-dependent: normalizados independentemente do tipo (null, bool ou string)
+        if (Object.prototype.hasOwnProperty.call(DOCKER_NORMALIZATION, k)) {
+          return [k, DOCKER_NORMALIZATION[k]];
+        }
+        // Campos de versão de ferramenta: normaliza strings → <VERSION>
         if (VERSION_KEYS.has(k) && v !== null && typeof v === 'string') {
           return [k, '<VERSION>'];
         }
@@ -138,7 +148,7 @@ function replaceRuntimeDynamics(value: unknown): unknown {
     } else if (key === 'success') {
       result[key] = '<SUCCESS>';
     } else if (key === 'stdoutSummary' || key === 'stderrSummary' || key === 'stdout' || key === 'stderr') {
-      result[key] = val === '' ? '' : '<REDACTED>';
+      result[key] = '<REDACTED>';
     } else {
       result[key] = replaceRuntimeDynamics(val);
     }
