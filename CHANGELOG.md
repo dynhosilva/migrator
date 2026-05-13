@@ -7,7 +7,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
-## [Unreleased] — WOW moment / demo-first UX
+## [0.3.0] — 2026-05-13
+
+### Demo-first UX + showcase visual
+
+Primeira versão pública com zero-friction onboarding e assets visuais oficiais.
 
 ### Adicionado
 
@@ -18,11 +22,17 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
   - Banner de contexto + CTA acionável ao final
   - `src/demo/fixture.ts` — 21 arquivos de projeto embutidos como `ProjectFile[]`
   - `src/demo/index.ts` — `runDemo()` síncrona, testável, desacoplada do CLI
+- **`scripts/capture.ts`** — geração automatizada de hero screenshot e GIF animado via Chrome headless (puppeteer-core + pngjs + gif-encoder-2)
+- **`docs/media/demo-analysis.png`** — hero screenshot oficial (banner → Supabase block)
+- **`docs/media/demo-full.gif`** — GIF animado com 23 keyframes, ~25s de loop
 
 ### Melhorado
 
-- README — seção "Demo" acima de "Instalação": `npx lovable-migrate demo` como ponto de entrada de zero-fricção
+- README — hero screenshot + GIF animado ativos; seção "Demo" acima de "Instalação"
 - Quick Start — `demo` listado como passo 0 antes de `analyze` e `deploy`
+- Output terminal — visual premium: sem caminhos absolutos, sem labels internos, pluralização correta em PT-BR em todos os módulos
+- `renderCicd()` — workflows visíveis no output principal do `deploy`
+- Timestamps ISO removidos do output interativo
 - `program.description` do CLI — `demo` incluído nos exemplos de uso
 
 ### Testes
@@ -120,6 +130,6 @@ Supabase: auth, storage, realtime, migrations, edge functions
 
 Ver [ROADMAP.md](ROADMAP.md) para detalhes.
 
-- **v0.3.0** — Supabase CLI integration (migrations automáticas)
-- **v0.4.0** — Hostinger VPS deploy integration
+- **v0.4.0** — Supabase CLI integration (migrations automáticas)
+- **v0.5.0** — Hostinger VPS deploy integration
 - **v1.0.0** — API estável, full feature parity

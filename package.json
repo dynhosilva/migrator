@@ -1,6 +1,6 @@
 {
   "name": "lovable-migrate",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Migration engine for Lovable.dev exported projects — analyze, plan, validate, migrate, deploy",
   "type": "commonjs",
   "main": "dist/index.js",
