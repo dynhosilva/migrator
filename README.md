@@ -1,95 +1,97 @@
 # lovable-migrate
 
-> **De Lovable.dev para produção em um comando.**
+> **From Lovable.dev to production in one command.**
 
 [![npm version](https://img.shields.io/npm/v/lovable-migrate.svg)](https://www.npmjs.com/package/lovable-migrate)
 [![CI](https://github.com/dynhosilva/migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/dynhosilva/migrator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
+🇧🇷 [Versão em português](README.pt-BR.md)
+
 ---
 
 ```bash
-npx lovable-migrate demo   # veja em ação agora — sem instalar
+npx lovable-migrate demo   # see it in action — no install required
 ```
 
 <p align="center">
   <img src="docs/media/demo-analysis.png"
-       alt="lovable-migrate detectando React 18 · Supabase · Tailwind · shadcn/ui automaticamente"
+       alt="lovable-migrate detecting React 18 · Supabase · Tailwind · shadcn/ui automatically"
        width="760">
 </p>
 
-Detecta sua stack automaticamente, identifica Supabase (auth, storage, migrations, edge functions), gera Dockerfile multi-stage, cria workflows GitHub Actions prontos para uso e planeja o deploy remoto — **sem modificar seu projeto original.**
+Automatically detects your stack, identifies Supabase (auth, storage, migrations, edge functions), generates a multi-stage Dockerfile, creates ready-to-use GitHub Actions workflows, and plans the remote deployment — **without modifying your original project.**
 
 ---
 
 ## Quick Start
 
 ```bash
-# Veja em ação — sem instalar, sem precisar de um projeto
+# See it in action — no install, no project needed
 npx lovable-migrate demo
 
-# Pipeline completo — gera todos os artefatos
-lovable-migrate deploy ./meu-projeto --output ./output/meu-projeto
+# Full pipeline — generates all artifacts
+lovable-migrate deploy ./my-project --output ./output/my-project
 
-# Wizard interativo — recomendado para primeiros projetos
+# Interactive wizard — recommended for first-time users
 lovable-migrate ui
 ```
 
 ---
 
-## Como funciona
+## How It Works
 
 ```
-1. Analisa     → detecta framework, Supabase, env vars, rotas, build system
-2. Planeja     → gera estratégia de deploy, riscos e checklist de migração
-3. Gera        → Dockerfile + GitHub Actions + plano de execução — tudo em segundos
+1. Analyze    → detects framework, Supabase, env vars, routes, build system
+2. Plan       → generates deploy strategy, risk list, and migration checklist
+3. Generate   → Dockerfile + GitHub Actions + execution plan — in seconds
 ```
 
-O projeto original nunca é modificado. Todos os artefatos vão para `--output`.
+Your original project is never modified. All artifacts go to `--output`.
 
 ---
 
-## O que você recebe
+## What You Get
 
-Execute `lovable-migrate deploy ./meu-projeto` e receba imediatamente:
+Run `lovable-migrate deploy ./my-project` and receive immediately:
 
 ```
-output/meu-projeto/
+output/my-project/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml              # CI: push + PR · Node [20, 22] · npm cache
 │       └── release.yml         # Release: tag v* · npm publish --dry-run
 ├── docker/
-│   ├── Dockerfile              # Multi-stage otimizado para sua stack
-│   ├── docker-compose.yml      # Healthcheck e volumes configurados
+│   ├── Dockerfile              # Multi-stage optimized for your stack
+│   ├── docker-compose.yml      # With healthcheck and volumes configured
 │   └── .dockerignore
 ├── env/
-│   └── .env.example            # Todas as variáveis de ambiente detectadas
+│   └── .env.example            # All detected environment variables
 ├── deploy/
-│   └── deploy-instructions.md  # Comandos prontos para copiar
+│   └── deploy-instructions.md  # Ready-to-copy commands
 ├── execution/
 │   ├── execution-plan.json
-│   └── dry-run.md              # Preview antes de executar qualquer coisa
+│   └── dry-run.md              # Preview before executing anything
 └── reports/
     └── migration-summary.json
 ```
 
-Se Supabase for detectado, também gera:
+If Supabase is detected, also generates:
 
 ```
 ├── supabase/
-│   ├── migrations/             # Cópias das migrations para aplicar no destino
-│   └── functions/<nome>/      # Edge Functions prontas para deploy via CLI
+│   ├── migrations/             # Migration copies ready to apply at destination
+│   └── functions/<name>/      # Edge Functions ready for Supabase CLI deploy
 ```
 
 ---
 
-## Terminal preview
+## Terminal Preview
 
 <p align="center">
   <img src="docs/media/demo-full.gif"
-       alt="lovable-migrate demo — 25 segundos do banner à lista de artefatos"
+       alt="lovable-migrate demo — from banner to artifact list in 25 seconds"
        width="760">
 </p>
 
@@ -100,49 +102,49 @@ $ npx lovable-migrate demo
   ║  lovable-migrate · demo                              ║
   ╚══════════════════════════════════════════════════════╝
 
-  Projeto de exemplo: my-saas-app
+  Sample project: my-saas-app
   React 18 · TypeScript · Vite · Supabase · Tailwind · shadcn/ui
 
   ┌──────────────────────────────────────────────────────┐
-  │  Relatório de Análise                                │
+  │  Analysis Report                                     │
   └──────────────────────────────────────────────────────┘
 
-  Projeto            my-saas-app
+  Project            my-saas-app
   Framework          react
-  Linguagem          typescript  (15 ts)
+  Language           typescript  (15 ts)
   Build system       vite
   Package mgr        npm
   Lovable            ✓  .lovable
 
   Supabase
   ──────────────────────────────────────────────────────
-  ✓  Detectado
+  ✓  Detected
   ✓  Auth
   ✓  Storage
   ✓  Realtime
-  Migrations         2 arquivos
+  Migrations         2 files
     20240101000000_initial.sql
     20240115000000_add_teams.sql
   Edge Functions     2
     send-email
     process-payment
 
-  Variáveis de ambiente
+  Environment variables
   ──────────────────────────────────────────────────────
   VITE_SUPABASE_URL
   VITE_SUPABASE_ANON_KEY
   VITE_APP_URL
   VITE_STRIPE_PUBLIC_KEY
 
-  Rotas
+  Routes
   ──────────────────────────────────────────────────────
   /  ·  /auth  ·  /dashboard
   /settings  ·  /profile
 
-  [ ... Plano de Migração · Checklist · Validação ... ]
+  [ ... Migration Plan · Checklist · Validation ... ]
 
   ┌──────────────────────────────────────────────────────┐
-  │  O que deploy geraria para este projeto              │
+  │  What deploy would generate for this project         │
   └──────────────────────────────────────────────────────┘
 
   GitHub Actions
@@ -154,72 +156,74 @@ $ npx lovable-migrate demo
   ✓  docker/docker-compose.yml        healthcheck · volumes
   ✓  docker/.dockerignore
 
-  Configuração
-  ✓  env/.env.example                 4 variáveis detectadas
-  ✓  deploy/deploy-instructions.md    comandos prontos para copiar
-  ✓  supabase/migrations/             2 arquivos SQL
+  Configuration
+  ✓  env/.env.example                 4 variables detected
+  ✓  deploy/deploy-instructions.md    ready-to-copy commands
+  ✓  supabase/migrations/             2 SQL files
   ✓  supabase/functions/              2 Edge Functions
 
-  Execução e planejamento
+  Execution and planning
   ✓  execution/execution-plan.json
-  ✓  execution/dry-run.md             preview sem executar nada
+  ✓  execution/dry-run.md             preview without running anything
   ✓  reports/migration-summary.json
 
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  ✓  Análise concluída — nenhum bloqueador detectado.
+  ✓  Analysis complete — no blockers detected.
 
-  Pronto para migrar seu projeto real?
+  Ready to migrate your real project?
 
-    lovable-migrate deploy ./meu-projeto
-    lovable-migrate ui               wizard interativo — recomendado
+    lovable-migrate deploy ./my-project
+    lovable-migrate ui               interactive wizard — recommended
 ```
+
+> **Note:** The CLI output is in Brazilian Portuguese. The engine, types, and API are in English.
 
 ---
 
-## Instalação
+## Installation
 
 ```bash
 npm install -g lovable-migrate
-lovable-migrate --version   # verifica a instalação
+lovable-migrate --version   # verify installation
 ```
 
-**Requisito:** Node.js >= 20.0.0
+**Requirement:** Node.js >= 20.0.0
 
 ---
 
 ## Pipeline
 
-Cada comando executa as fases anteriores mais a sua:
+Each command runs all previous phases plus its own:
 
 ```
-analyze   → detecta stack, framework, env vars, Supabase
-plan      → gera estratégia de deploy e lista de riscos
-validate  → verifica segurança — bloqueia migrações inseguras
-migrate   → gera artefatos (env, SQL, instruções)
-deploy    → gera Dockerfile + docker-compose
-cicd      → gera .github/workflows/ci.yml e release.yml
-execute   → verifica ambiente + gera plano de execução
-remote    → planeja deploy remoto (sem SSH real)
+analyze   → detects stack, framework, env vars, Supabase
+plan      → generates deploy strategy and risk list
+validate  → security gate — blocks unsafe migrations
+migrate   → generates artifacts (env, SQL, instructions)
+deploy    → generates Dockerfile + docker-compose
+cicd      → generates .github/workflows/ci.yml and release.yml
+execute   → verifies environment + generates execution plan
+remote    → plans remote deployment (no real SSH)
 ```
 
 ```bash
-# Apenas análise — zero efeitos colaterais
-lovable-migrate analyze ./projeto
+# Analysis only — zero side effects
+lovable-migrate analyze ./project
 
-# Gerar Dockerfile + artefatos + GitHub Actions
-lovable-migrate deploy ./projeto --output ./output
+# Generate Dockerfile + artifacts + GitHub Actions
+lovable-migrate deploy ./project --output ./output
 
-# Planejar deploy remoto
-lovable-migrate remote ./projeto \
-  --ssh-host meu-servidor.com \
+# Plan remote deployment
+lovable-migrate remote ./project \
+  --ssh-host my-server.com \
   --ssh-user deploy \
-  --remote-path /opt/minha-app
+  --remote-path /opt/my-app
 ```
 
 ---
 
-## Stacks suportadas
+## Supported Stacks
 
 | Framework | Build System | Deploy Strategy |
 |---|---|---|
@@ -232,15 +236,15 @@ lovable-migrate remote ./projeto \
 
 **Package managers:** npm, yarn, pnpm, bun
 
-**Detectado automaticamente:** Supabase (auth, storage, migrations, edge functions), Tailwind, Shadcn/ui
+**Auto-detected:** Supabase (auth, storage, migrations, edge functions), Tailwind, Shadcn/ui
 
 ---
 
 ## GitHub Actions
 
-O comando `deploy` gera automaticamente dois workflows prontos para uso:
+The `deploy` command automatically generates two ready-to-use workflows:
 
-**`.github/workflows/ci.yml`** — executado em todo push e pull request:
+**`.github/workflows/ci.yml`** — runs on every push and pull request:
 
 ```yaml
 # Generated by lovable-migrate — do not edit manually
@@ -271,11 +275,11 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-      - name: Test          # incluído apenas se scripts.test existir em package.json
+      - name: Test          # included only if scripts.test exists in package.json
         run: npm test
 ```
 
-**`.github/workflows/release.yml`** — executado ao fazer push de uma tag `v*`:
+**`.github/workflows/release.yml`** — runs when pushing a `v*` tag:
 
 ```yaml
 # Generated by lovable-migrate — do not edit manually
@@ -300,20 +304,20 @@ jobs:
       - name: Build
         run: npm run build
       - name: Publish (dry-run)
-        run: npm publish --dry-run  # seguro por padrão — sem NPM_TOKEN necessário
+        run: npm publish --dry-run  # safe by default — no NPM_TOKEN required
 ```
 
-### Filosofia
+### Philosophy
 
-| Princípio | Implementação |
+| Principle | Implementation |
 |---|---|
-| **Determinístico** | Mesmo projeto → mesmo YAML, em qualquer máquina, em qualquer execução |
-| **Seguro por padrão** | `npm publish --dry-run` — publica sem efeito até o usuário ativar |
-| **Zero secrets** | Nenhuma referência a `secrets.*` no arquivo gerado |
-| **Zero cloud coupling** | Sem GitHub API, sem OIDC, sem Hostinger — só YAML estático |
-| **Condicional ao projeto** | Steps `build` e `test` incluídos apenas se os scripts existem |
+| **Deterministic** | Same project → same YAML, on any machine, on every run |
+| **Safe by default** | `npm publish --dry-run` — no effect until you opt in |
+| **Zero secrets** | No `secrets.*` references in the generated file |
+| **Zero cloud coupling** | No GitHub API, no OIDC, no vendor lock-in — just static YAML |
+| **Project-conditional** | `build` and `test` steps included only if the scripts exist |
 
-Para ativar publicação real no release.yml, adicione a variável de ambiente manualmente:
+To enable real publishing in release.yml, add the environment variable manually:
 
 ```yaml
       - name: Publish
@@ -322,93 +326,93 @@ Para ativar publicação real no release.yml, adicione a variável de ambiente m
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-Exemplos reais gerados: [`examples/generated-workflows/`](examples/generated-workflows/)
+Real generated examples: [`examples/generated-workflows/`](examples/generated-workflows/)
 
-Documentação completa: [docs/cicd.md](docs/cicd.md)
+Full documentation: [docs/cicd.md](docs/cicd.md)
 
 ---
 
-## TUI — Wizard interativo
+## TUI — Interactive Wizard
 
 ```bash
 lovable-migrate ui
 ```
 
-O wizard guia você por cada fase com revisão interativa:
+The wizard guides you through each phase with interactive review at every step:
 
 ```
 Welcome
-  → Informar caminho do projeto
-  → [Analyze + Plan automático]
-  → Revisar stack detectada
-  → Revisar plano e riscos
-  → Revisar resultado da validação
-  → Confirmar antes de escrever em disco
+  → Enter project path
+  → [Automatic Analyze + Plan]
+  → Review detected stack
+  → Review plan and risks
+  → Review validation result
+  → Confirm before writing to disk
   → [Migrate + Deploy + Execute + Remote]
-  → Revisar dry-run gerado
-  → Resumo final com acesso aos artefatos
+  → Review generated dry-run
+  → Final summary with artifact access
 ```
 
 ---
 
-## API HTTP
+## HTTP API
 
 ```bash
 lovable-migrate server --port 3001
 ```
 
 ```bash
-# Verificar saúde
+# Health check
 curl http://localhost:3001/health
 
-# Analisar projeto
+# Analyze a project
 curl -X POST http://localhost:3001/analyze \
   -H "Content-Type: application/json" \
-  -d '{"input": "/path/to/projeto"}'
+  -d '{"input": "/path/to/project"}'
 
-# Pipeline completo
+# Full pipeline
 curl -X POST http://localhost:3001/deploy \
   -H "Content-Type: application/json" \
-  -d '{"input": "/path/to/projeto", "output": "./output/meu-projeto"}'
+  -d '{"input": "/path/to/project", "output": "./output/my-project"}'
 ```
 
-**Endpoints disponíveis:** `/health` · `/version` · `/capabilities` · `/analyze` · `/plan` · `/validate` · `/migrate` · `/deploy` · `/execute` · `/remote`
+**Available endpoints:** `/health` · `/version` · `/capabilities` · `/analyze` · `/plan` · `/validate` · `/migrate` · `/deploy` · `/execute` · `/remote`
 
-Documentação completa: [docs/api.md](docs/api.md)
+Full documentation: [docs/api.md](docs/api.md)
 
 ---
 
-## Filosofia
+## Philosophy
 
-### O projeto original nunca é modificado
+### The original project is never modified
 
-Todos os artefatos são gerados em um diretório de saída separado. O `lovable-migrate` lê o projeto, analisa, e escreve apenas em `--output`. Jamais toca nos arquivos originais.
+All artifacts are generated in a separate output directory. `lovable-migrate` reads the project, analyzes it, and writes only to `--output`. It never touches the original files.
 
-### Dry-run por padrão
+### Dry-run by default
 
-Antes de qualquer operação real, o pipeline gera um `dry-run.md` com preview de tudo que seria executado. Você revisa antes de confirmar.
+Before any real operation, the pipeline generates a `dry-run.md` with a complete preview of everything that would be executed. You review before confirming.
 
-### Conservador por design
+### Conservative by design
 
-Se não há dados suficientes para uma decisão segura, o planner usa `confidence: unknown` e lista riscos explicitamente. Sem suposições silenciosas.
+When there isn't enough data for a safe decision, the planner uses `confidence: unknown` and lists risks explicitly. No silent assumptions.
 
-### Sandbox de execução
+### Execution sandbox
 
-O runtime executa apenas uma whitelist estrita de executáveis (`node`, `npm`, `npx`, `pnpm`, `yarn`, `bun`, `docker`) com `shell: false` — injeção via argumentos é impossível ao nível do SO.
+The runtime executes only a strict whitelist of executables (`node`, `npm`, `npx`, `pnpm`, `yarn`, `bun`, `docker`) with `shell: false` — argument injection is impossible at the OS level.
 
-### Validação explícita
+### Explicit validation
 
-A fase `validate` pode bloquear o pipeline com `safeToMigrate: false`. Para prosseguir em casos onde você sabe o que está fazendo (ex: env vars ainda não configuradas), use `--force`.
+The `validate` phase can block the pipeline with `safeToMigrate: false`. To proceed in cases where you know what you're doing (e.g., env vars not yet configured on the server), use `--force`.
 
 ---
 
-## Arquitetura
+## Architecture
 
 ```
-ProjectContext (imutável — espinha dorsal do pipeline)
+ProjectContext (immutable — pipeline backbone)
      │
      ├── analyzeContext()   → AnalysisReport
-     │     DetectorRegistry (10 detectores independentes)
+     │     DetectorRegistry (10 independent detectors)
      │
      ├── planContext()      → MigrationPlan
      │     PlannerRegistry (7 strategies)
@@ -416,37 +420,37 @@ ProjectContext (imutável — espinha dorsal do pipeline)
      ├── validateContext()  → ValidationResult
      │     ValidationRegistry (7 rules)
      │
-     ├── migrateContext()   → MigrationResult     [escreve disk]
-     ├── deployContext()    → DeployState          [escreve disk]
-     ├── cicdContext()      → CicdState            [escreve disk]
-     ├── executeContext()   → ExecutionState       [escreve disk]
-     ├── runContext()       → RuntimeState         [executa comandos]
-     └── prepareContext()   → RemoteState          [planejamento puro]
+     ├── migrateContext()   → MigrationResult     [writes disk]
+     ├── deployContext()    → DeployState          [writes disk]
+     ├── cicdContext()      → CicdState            [writes disk]
+     ├── executeContext()   → ExecutionState       [writes disk]
+     ├── runContext()       → RuntimeState         [runs commands]
+     └── prepareContext()   → RemoteState          [pure planning]
 
-Camadas de transporte (sem lógica de domínio):
+Transport layers (no domain logic):
      ├── CLI     — Commander
      ├── API     — Fastify (thin layer)
      └── TUI     — Ink/React (wizard)
 ```
 
-Cada fase recebe `ProjectContext` e retorna **novo** contexto via spread — imutabilidade garantida. Adicionar uma fase nova não requer alterar o orquestrador.
+Each phase receives `ProjectContext` and returns a **new** context via spread — immutability guaranteed. Adding a new phase doesn't require changing the orchestrator.
 
-Documentação detalhada: [docs/architecture.md](docs/architecture.md) · [docs/architecture-overview.md](docs/architecture-overview.md)
+Detailed documentation: [docs/architecture.md](docs/architecture.md) · [docs/architecture-overview.md](docs/architecture-overview.md)
 
 ---
 
-## Exemplos
+## Examples
 
-Veja a pasta [`examples/`](examples/) para projetos funcionais:
+See the [`examples/`](examples/) folder for working projects:
 
-| Exemplo | Stack | Demonstra |
+| Example | Stack | Demonstrates |
 |---|---|---|
-| [`strat-forge-pro`](examples/strat-forge-pro/) | React + Vite + Supabase + Bun | Projeto real exportado do Lovable.dev |
-| [`vite-react`](examples/vite-react/) | React + Vite + TypeScript | Caso mais comum — deploy static |
-| [`next-supabase`](examples/next-supabase/) | Next.js + Supabase | Deploy node-server + banco |
-| [`minimal-static`](examples/minimal-static/) | HTML + JS | Projeto mínimo sem framework |
-| [`vue-vite`](examples/vue-vite/) | Vue 3 + Vite | Stack alternativa |
-| [`node-api`](examples/node-api/) | Node.js + Express | Backend sem frontend |
+| [`strat-forge-pro`](examples/strat-forge-pro/) | React + Vite + Supabase + Bun | Real project exported from Lovable.dev |
+| [`vite-react`](examples/vite-react/) | React + Vite + TypeScript | Most common case — static deploy |
+| [`next-supabase`](examples/next-supabase/) | Next.js + Supabase | Node server deploy + database |
+| [`minimal-static`](examples/minimal-static/) | HTML + JS | Minimal project without framework |
+| [`vue-vite`](examples/vue-vite/) | Vue 3 + Vite | Alternative stack |
+| [`node-api`](examples/node-api/) | Node.js + Express | Backend without frontend |
 
 ---
 
@@ -454,75 +458,75 @@ Veja a pasta [`examples/`](examples/) para projetos funcionais:
 
 | Status | Item |
 |---|---|
-| ✅ | Analyze — detecção de stack, framework, Supabase |
-| ✅ | Plan — estratégia de deploy e plano de migração |
-| ✅ | Validate — gate de segurança com bloqueio explícito |
-| ✅ | Migrate — geração de artefatos filesystem |
-| ✅ | Deploy — Dockerfile + docker-compose multi-estágio |
-| ✅ | Execute — verificação de ambiente + plano de execução |
-| ✅ | Runtime — build local controlado com sandbox |
-| ✅ | Remote — planejamento de deploy remoto |
-| ✅ | API HTTP — Fastify com rate limiting |
-| ✅ | TUI — wizard interativo (Ink/React) |
-| ✅ | GitHub Actions generator — ci.yml + release.yml determinísticos |
-| 🔲 | Re-sync — re-sincronização com Lovable/Supabase |
-| 🔲 | Hostinger integration — deploy automático em VPS |
-| 🔲 | Supabase CLI integration — execute migrations automaticamente |
+| ✅ | Analyze — stack, framework, Supabase detection |
+| ✅ | Plan — deploy strategy and migration plan |
+| ✅ | Validate — security gate with explicit blocking |
+| ✅ | Migrate — filesystem artifact generation |
+| ✅ | Deploy — multi-stage Dockerfile + docker-compose |
+| ✅ | Execute — environment check + execution plan |
+| ✅ | Runtime — controlled local build with sandbox |
+| ✅ | Remote — remote deployment planning |
+| ✅ | HTTP API — Fastify with rate limiting |
+| ✅ | TUI — interactive wizard (Ink/React) |
+| ✅ | GitHub Actions generator — deterministic ci.yml + release.yml |
+| 🔲 | Re-sync — re-synchronization with Lovable / Supabase |
+| 🔲 | Hostinger integration — automatic VPS deployment |
+| 🔲 | Supabase CLI integration — automatic migration execution |
 
-Roadmap completo: [ROADMAP.md](ROADMAP.md)
-
----
-
-## Segurança
-
-- Nenhuma fase modifica o projeto original
-- Toda escrita em disco valida que o path está dentro do `outputDir`
-- Runtime usa sandbox com whitelist de executáveis e `shell: false`
-- Remote não abre conexões SSH reais
-- API valida schema e bloqueia campos extras por padrão
-- Rate limiting padrão: 200 req/min por IP
-
-Para reportar vulnerabilidades: [SECURITY.md](SECURITY.md)
+Full roadmap: [ROADMAP.md](ROADMAP.md)
 
 ---
 
-## Contribuindo
+## Security
 
-Contribuições são bem-vindas! Veja [CONTRIBUTING.md](CONTRIBUTING.md) para o guia completo.
+- No phase modifies the original project
+- All disk writes validate that the path is inside `outputDir`
+- Runtime uses a sandbox with executable whitelist and `shell: false`
+- Remote doesn't open real SSH connections
+- API validates schema and blocks extra fields by default
+- Default rate limiting: 200 req/min per IP
+
+To report vulnerabilities: [SECURITY.md](SECURITY.md)
+
+---
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
 ```bash
 git clone https://github.com/dynhosilva/migrator
 cd lovable-migrate
 npm install
-npm run dev -- demo           # veja o demo funcionando
+npm run dev -- demo           # see the demo running
 npm run dev -- analyze ./examples/vite-react
 ```
 
 ---
 
-## Documentação
+## Documentation
 
-| Documento | Descrição |
+| Document | Description |
 |---|---|
-| [Primeiros passos](docs/getting-started.md) | Instalação e primeiro projeto |
-| [CLI — referência](docs/cli.md) | Todos os comandos e flags |
-| [API HTTP](docs/api.md) | Endpoints e envelopes de resposta |
-| [TUI](docs/tui.md) | Wizard interativo — navegação e atalhos |
-| [Arquitetura](docs/architecture.md) | Pipeline, módulos e decisões de design |
-| [Visão geral pública](docs/architecture-overview.md) | Arquitetura para contribuidores |
-| [Runtime](docs/runtime.md) | Execução segura — sandbox e whitelist |
-| [Deploy remoto](docs/remote.md) | Planejamento SSH e host profiles |
-| [GitHub Actions](docs/cicd.md) | Geração de workflows — arquitetura, builders, filosofia |
-| [Desenvolvimento](docs/development.md) | Setup, testes e como adicionar fases |
-| [Screenshots](docs/screenshots.md) | Guia para capturas promocionais |
-| [GIF storyboard](docs/gif-storyboard.md) | Narrativa e sequência do GIF de demonstração |
-| [GIF production](docs/gif-production.md) | Comandos exatos para gravar e exportar o GIF |
-| [Social preview](docs/social-preview.md) | Specs da imagem de preview social (GitHub, Twitter, LinkedIn) |
-| [Launch assets](docs/launch-assets.md) | Tweet, Product Hunt, YouTube — copy de lançamento |
-| [Social assets](docs/social-assets.md) | Templates de imagem por plataforma |
+| [Getting started](docs/getting-started.md) | Installation and first project |
+| [CLI reference](docs/cli.md) | All commands and flags |
+| [HTTP API](docs/api.md) | Endpoints and response envelopes |
+| [TUI](docs/tui.md) | Interactive wizard — navigation and shortcuts |
+| [Architecture](docs/architecture.md) | Pipeline, modules, and design decisions |
+| [Public overview](docs/architecture-overview.md) | Architecture for contributors |
+| [Runtime](docs/runtime.md) | Safe execution — sandbox and whitelist |
+| [Remote deploy](docs/remote.md) | SSH planning and host profiles |
+| [GitHub Actions](docs/cicd.md) | Workflow generation — architecture, builders, philosophy |
+| [Development](docs/development.md) | Setup, tests, and how to add phases |
+| [Screenshots](docs/screenshots.md) | Guide for promotional captures |
+| [GIF storyboard](docs/gif-storyboard.md) | Demo GIF narrative and sequence |
+| [GIF production](docs/gif-production.md) | Exact commands to record and export the GIF |
+| [Social preview](docs/social-preview.md) | Social preview image specs (GitHub, Twitter, LinkedIn) |
+| [Launch assets](docs/launch-assets.md) | Tweet, Product Hunt, YouTube — launch copy |
+| [Social assets](docs/social-assets.md) | Image templates by platform |
 
 ---
 
-## Licença
+## License
 
 [MIT](LICENSE) — © 2026 lovable-migrate contributors
