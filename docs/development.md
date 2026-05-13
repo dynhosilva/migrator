@@ -189,10 +189,37 @@ Para adicionar novo fixture: criar diretório em `test/fixtures/`, não adiciona
 - **Paths absolutos** do fixture dir → `<FIXTURE_DIR>`
 - **Paths absolutos** do output dir → `<OUTPUT_DIR>`
 - **Separadores Windows** (backslash → forward slash)
+- **Versões de ferramentas** (`v18.20.4`, etc.) → `<VERSION>`
+- **Estado Docker do host** (`dockerAvailable`, `dockerVersion`) → `<DOCKER_AVAILABLE>`, `<DOCKER_VERSION>`
 
-Isso garante snapshots **multiplataforma** e **determinísticos entre execuções**.
+`normalizeRuntimeLog()` adiciona normalização de campos de runtime:
+- `durationMs` → `<DURATION_MS>`, `exitCode` → `<EXIT_CODE>`, `success` → `<SUCCESS>`
+- `stdoutSummary`, `stderrSummary` → `<REDACTED>` (conteúdo do SO varia)
 
-Conteúdo de arquivos gerados (Dockerfile, docker-compose.yml, .dockerignore) não contém timestamps nem paths — pode ser snapshot sem normalização.
+### Filosofia de snapshots: estrutural vs host-dependent
+
+A regra fundamental: **nunca snapshottar campos que dependem do ambiente onde o teste roda**.
+
+| Categoria | Exemplos | Estratégia |
+|---|---|---|
+| **Estrutural invariante** | YAML de workflows, Dockerfile, plano de execução, estrutura de tipos | `toMatchSnapshot()` direto |
+| **Dinâmico entre execuções** | Timestamps, paths absolutos, versões | `normalizeOutput()` antes de snapshot |
+| **Host-dependent** | Docker disponível, versão do Node instalado | Normalização dedicada (DOCKER_NORMALIZATION, VERSION_KEYS) |
+| **Runtime dinâmico** | durationMs, exitCode, stdout/stderr | `normalizeRuntimeLog()` — redact completo |
+| **Completamente host-dependent** | readiness do host, issues de Docker | Não snapshottado — assertions comportamentais |
+
+**Regra prática:** se o valor muda entre máquinas com configurações diferentes (Docker instalado, Node diferente, Windows vs Linux), não coloque em snapshot — use assertions de tipo ou comportamento.
+
+**Conteúdo gerado estático** (Dockerfile, docker-compose.yml, workflows YAML, .dockerignore) é 100% determinístico — pode ser snapshot sem nenhuma normalização além de CRLF→LF.
+
+### Cross-platform guarantees
+
+Todas as garantias abaixo são verificadas pelo CI (Node matrix [20, 22] em ubuntu-latest):
+
+- `ProjectFile.relativePath` sempre usa `/` — nunca `path.sep`
+- `writeGeneratedFiles` usa `path.resolve` + `path.sep` para escrever — correto em Windows e Linux
+- Snapshots normalizados com `replace(/\r\n/g, '\n')` — CRLF de editores Windows não quebra CI
+- `yaml.stringify()` produz LF e output idêntico em todas as plataformas
 
 ## TypeScript
 

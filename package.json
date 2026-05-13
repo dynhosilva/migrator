@@ -13,7 +13,8 @@
   "files": [
     "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "examples/generated-workflows/"
   ],
   "engines": {
     "node": ">=20.0.0"

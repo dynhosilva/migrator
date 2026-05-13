@@ -93,7 +93,7 @@ describe('dist/ — artefatos compilados', () => {
 
   const EXPECTED_MODULES = [
     'analyzer', 'planner', 'validator', 'migrator',
-    'deploy', 'executor', 'runtime', 'remote',
+    'deploy', 'cicd', 'executor', 'runtime', 'remote',
     'server', 'tui', 'core', 'sources', 'output', 'logger',
   ];
 

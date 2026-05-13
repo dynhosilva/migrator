@@ -10,6 +10,7 @@ import { deployContext }   from './deploy';
 import { executeContext }  from './executor';
 import { runContext }      from './runtime';
 import { prepareContext }  from './remote';
+import { cicdContext }     from './cicd';
 import { startServer }     from './server';
 import { startTui }        from './tui';
 import { createContext }   from './core';
@@ -212,7 +213,7 @@ program
 
 program
   .command('deploy <input>')
-  .description('Pipeline completo + gera artefatos Docker (Dockerfile, docker-compose.yml, .dockerignore)')
+  .description('Pipeline completo + gera artefatos Docker e workflows GitHub Actions')
   .option('-v, --verbose', 'Habilita saída verbose')
   .option('-o, --output <dir>', 'Diretório de saída (padrão: ./output/<projeto>)')
   .option('-f, --format <format>', 'Formato de saída: terminal | json', 'terminal')
@@ -249,12 +250,17 @@ program
 
       const migrated  = migrateContext(validated, outputDir);
       const deployed  = deployContext(migrated, outputDir);
+      const withCicd  = cicdContext(deployed, outputDir);
+
+      logger.info('Workflows gerados:');
+      logger.info(`  .github/workflows/ci.yml      — CI (push + PR, Node matrix [20,22])`);
+      logger.info(`  .github/workflows/release.yml — Release (tag v*, npm publish --dry-run)`);
 
       const renderer = options.format === 'json'
         ? new JsonRenderer()
         : new TerminalRenderer();
 
-      renderer.render(deployed);
+      renderer.render(withCicd);
     } catch (err) {
       logger.error((err as Error).message);
       process.exit(1);
@@ -300,7 +306,8 @@ program
 
       const migrated  = migrateContext(validated, outputDir);
       const deployed  = deployContext(migrated, outputDir);
-      const executed  = executeContext(deployed, outputDir);
+      const withCicd  = cicdContext(deployed, outputDir);
+      const executed  = executeContext(withCicd, outputDir);
 
       const renderer = options.format === 'json'
         ? new JsonRenderer()
@@ -352,7 +359,8 @@ program
 
       const migrated  = migrateContext(validated, outputDir);
       const deployed  = deployContext(migrated, outputDir);
-      const executed  = executeContext(deployed, outputDir);
+      const withCicd  = cicdContext(deployed, outputDir);
+      const executed  = executeContext(withCicd, outputDir);
       // projectDir = input (diretório fonte onde npm install e build rodam)
       const ran       = await runContext(executed, outputDir, path.resolve(input));
 
@@ -413,6 +421,7 @@ program
 
       const migrated = migrateContext(validated, outputDir);
       const deployed = deployContext(migrated, outputDir);
+      const withCicd = cicdContext(deployed, outputDir);
 
       const remoteOptions = {
         sshConfig: {
@@ -423,7 +432,7 @@ program
         remotePath: options.remotePath,
       };
 
-      const planned2 = prepareContext(deployed, outputDir, remoteOptions);
+      const planned2 = prepareContext(withCicd, outputDir, remoteOptions);
 
       const renderer = options.format === 'json'
         ? new JsonRenderer()
