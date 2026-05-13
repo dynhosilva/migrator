@@ -165,14 +165,34 @@ expect(normalizeOutput(content)).toMatchSnapshot();
 
 ### Fixtures
 
-| Fixture | Descrição |
-|---|---|
-| `react-vite` | React + Vite + npm + env vars |
-| `minimal-js` | JS mínimo, framework unknown |
-| `broken-project` | Sem package.json |
-| `supabase-project` | React + Vite + Supabase + migrations + edge function |
+| Fixture | Framework | package.json | Env vars | Supabase |
+|---|---|---|---|---|
+| `react-vite` | react + vite | ✓ | VITE_API_URL, VITE_APP_TITLE | ✗ |
+| `minimal-js` | unknown | ✓ | APP_GREETING | ✗ |
+| `broken-project` | unknown | ✗ | — | ✗ |
+| `supabase-project` | react + vite | ✓ | VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY | ✓ (1 migration, 1 edge fn) |
 
-**Fixtures são somente leitura.** Para testes de runtime que precisam escrever no diretório do projeto, copiar o fixture para `os.tmpdir()` antes de usar.
+**Fixtures são somente leitura.** Para testes de runtime que precisam escrever no diretório do projeto, copiar o fixture para `os.tmpdir()` antes de usar:
+
+```typescript
+const tmpDir = await makeTempDir();
+fs.cpSync(fixturePath, tmpDir, { recursive: true });
+// usar tmpDir como projectDir
+```
+
+Para adicionar novo fixture: criar diretório em `test/fixtures/`, não adicionar a `.gitignore`.
+
+### Normalização de snapshots
+
+`normalizeOutput()` em `test/helpers/normalize.ts` remove antes de snapshottar:
+- **Timestamps ISO** (`detectedAt`, `generatedAt`, etc.) → `<TIMESTAMP>`
+- **Paths absolutos** do fixture dir → `<FIXTURE_DIR>`
+- **Paths absolutos** do output dir → `<OUTPUT_DIR>`
+- **Separadores Windows** (backslash → forward slash)
+
+Isso garante snapshots **multiplataforma** e **determinísticos entre execuções**.
+
+Conteúdo de arquivos gerados (Dockerfile, docker-compose.yml, .dockerignore) não contém timestamps nem paths — pode ser snapshot sem normalização.
 
 ## TypeScript
 
@@ -203,3 +223,60 @@ node dist/cli.js --help
 ```
 
 Ver `.github/workflows/ci.yml` para a configuração completa (Node matrix: 20, 22).
+
+## Release
+
+### Versão
+
+Lida dinamicamente de `package.json` via `src/version.ts` — nunca hardcode versão no código:
+
+```typescript
+import pkg from '../package.json';
+export const VERSION: string = pkg.version;
+```
+
+### Build pipeline pré-release
+
+```bash
+npm run typecheck          # 1. verificar tipos
+npm run typecheck:test     # 2. verificar tipos dos testes
+npm test                   # 3. rodar testes
+npm run build              # 4. compilar para dist/
+npm run test:dist          # 5. verificar integridade do pacote
+```
+
+`prepublishOnly` garante que steps 1-4 rodam automaticamente antes de `npm publish`.
+
+### Pacote npm — o que é incluído
+
+O campo `"files"` em `package.json` controla o conteúdo publicado:
+- `dist/` — código compilado
+- `README.md` — documentação principal
+- `LICENSE` — licença MIT
+
+`src/`, `test/`, `docs/`, `.github/` **não são incluídos**.
+
+### CI/CD
+
+| Workflow | Trigger | O que faz |
+|---|---|---|
+| `ci.yml` | push/PR em qualquer branch | typecheck, test, build, verify CLI — Node matrix [20, 22] |
+| `release.yml` | push de tag `v*.*.*` | valida semver, `npm publish`, cria GitHub Release |
+
+**Nunca fazer `npm publish` manual** — o release workflow cuida disso.
+
+### Packaging tests
+
+`test/packaging/` verifica a distribuição:
+- `integrity.test.ts` — valida `package.json` fields e estrutura de `dist/`
+- `cli.test.ts` — valida CLI binary, shebang, `--version`, `--help`
+
+Esses testes usam `it.skipIf(!distExists())` — passam silenciosamente sem build, executam após `npm run build`.
+
+### Criar um release
+
+1. Atualizar versão em `package.json`
+2. Atualizar `CHANGELOG.md`
+3. Commit + `git tag vX.Y.Z`
+4. `git push && git push --tags`
+5. CI cria o GitHub Release e publica no npm automaticamente

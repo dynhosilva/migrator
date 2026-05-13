@@ -95,3 +95,59 @@ A TUI é uma **camada de experiência** — não de domínio. Ela:
 - Chama a engine via `usePipeline` (que encapsula os módulos públicos)
 - Não manipula filesystem diretamente
 - Exige confirmação explícita antes de qualquer escrita em disco
+
+---
+
+## Internals de desenvolvimento
+
+### Separação de camadas
+
+| Camada | Responsabilidade |
+|---|---|
+| `src/tui/state/` | Estado da sessão — reducer puro, sem I/O |
+| `src/tui/hooks/` | Orquestração: `usePipeline` chama engine; `useNavigation` troca de tela |
+| `src/tui/components/` | Componentes Ink reutilizáveis — somente visualização |
+| `src/tui/screens/` | Telas compostas — coordenam componentes e hooks |
+| `src/tui/theme/` | Paleta de cores e símbolos — centralizada |
+| `src/tui/app.tsx` | Router raiz — mapeia `session.screen` → screen component |
+| `src/tui/index.ts` | Entry point — exporta `startTui()` |
+
+### Estado da sessão (`TuiSession`)
+
+```typescript
+interface TuiSession {
+  screen:      Screen;               // tela atual
+  inputPath:   string;               // caminho do projeto
+  outputDir:   string;               // diretório de saída
+  force:       boolean;              // --force flag
+  ctx:         ProjectContext | null; // contexto enriquecido atual
+  phases:      PhaseState;           // status de cada fase (idle|running|done|failed)
+  activePhase: string | null;        // fase em execução agora
+  error:       string | null;        // mensagem de erro atual
+  logs:        string[];             // últimas 100 linhas de log
+}
+```
+
+O `tuiReducer` é puro — mesmo input → mesmo output. Toda mutação de estado via `dispatch(action)`.
+
+### `usePipeline` — desacoplamento total
+
+`usePipeline(dispatch)` é o único ponto onde a TUI toca a engine:
+- Cada função chama o módulo público da engine (`analyzeContext`, `planContext`, etc.)
+- Em caso de erro, despacha `SET_ERROR` e retorna `null`
+- Despacha `SET_PHASE` para atualizar indicador de progresso
+- Nunca contém lógica de decisão de negócio
+
+### Testes da TUI
+
+```
+test/tui/
+├── navigation.test.ts           # reducer + ações de estado
+├── render.test.tsx              # Header, StatusBadge, LogViewer
+└── components/
+    ├── IssueList.test.tsx       # renderização de riscos com severidades
+    ├── StepProgress.test.tsx    # exibição de progresso por fase
+    └── ConfirmPrompt.test.tsx   # fluxo de confirmação (render + keyboard)
+```
+
+**Testes de teclado com Ink v3:** `useInput` registra listeners via `useEffect`. Em testes, é necessário `await new Promise(r => setTimeout(r, 20))` após o render e antes de `stdin.write()` para garantir que o listener foi registrado. `setImmediate` não é suficiente na primeira instância Ink criada.
