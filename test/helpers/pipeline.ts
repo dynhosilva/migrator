@@ -20,6 +20,7 @@ import { deployContext }   from '../../src/deploy';
 import { executeContext }  from '../../src/executor';
 import { runContext }      from '../../src/runtime';
 import { prepareContext }  from '../../src/remote';
+import { cicdContext }     from '../../src/cicd';
 import type { RemoteOptions } from '../../src/remote/types';
 import type { ProjectContext } from '../../src/core/types';
 
@@ -122,6 +123,19 @@ export async function runRuntimePipeline(
 ): Promise<ProjectContext> {
   const executed = await runExecutePipeline(name, outputDir, force);
   return runContext(executed, outputDir, projectDir);
+}
+
+/**
+ * Executa o pipeline até a fase de cicd:
+ * analyze → plan → validate → migrate → deploy → cicd.
+ */
+export async function runCicdPipeline(
+  name: string,
+  outputDir: string,
+  force = false,
+): Promise<ProjectContext> {
+  const deployed = await runPipeline(name, outputDir, force);
+  return cicdContext(deployed, outputDir);
 }
 
 /**

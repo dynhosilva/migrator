@@ -7,6 +7,7 @@ import type { DeployState } from '../deploy/types';
 import type { ExecutionState } from '../executor/types';
 import type { RuntimeState } from '../runtime/types';
 import type { RemoteState } from '../remote/types';
+import type { CicdState } from '../cicd/types';
 import type { ProjectContext } from './types';
 
 export type { ProjectContext, SourceInfo, ProjectMeta } from './types';
@@ -70,4 +71,9 @@ export function withRuntime(ctx: ProjectContext, runtime: RuntimeState): Project
 /** Retorna novo contexto imutável com o resultado do remote preenchido. */
 export function withRemote(ctx: ProjectContext, remote: RemoteState): ProjectContext {
   return { ...ctx, remote };
+}
+
+/** Retorna novo contexto imutável com o resultado do cicd preenchido. */
+export function withCicd(ctx: ProjectContext, cicd: CicdState): ProjectContext {
+  return { ...ctx, cicd };
 }

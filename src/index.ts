@@ -3,7 +3,7 @@ export { resolveSource, LocalFolderSource, ZipSource, GitHubSource, DEFAULT_IGNO
 export type { ProjectFile, ProjectSource, SourceKind, IgnoreRule } from './sources';
 
 // Core — espinha dorsal do pipeline
-export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime, withRemote } from './core';
+export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime, withRemote, withCicd } from './core';
 export type { ProjectContext, SourceInfo, ProjectMeta } from './core';
 
 // Analyzer
@@ -124,6 +124,18 @@ export type {
   RemoteIssueSeverity,
   RemoteStep,
 } from './remote';
+
+// CICD — geração de workflows GitHub Actions
+export { cicdProject, cicdContext } from './cicd';
+export type {
+  CicdState,
+  CiSummary,
+  ReleaseSummary,
+  CicdIssue,
+  CicdReadiness,
+  CicdIssueSeverity,
+  CiStepKind,
+} from './cicd';
 
 // Output — renderização desacoplada
 export { TerminalRenderer, JsonRenderer } from './output';
