@@ -1,4 +1,3 @@
-import path  from 'path';
 import chalk from 'chalk';
 import type { Renderer } from './renderer';
 import type { ProjectContext } from '../core/types';
@@ -21,6 +20,10 @@ import type { CicdState } from '../cicd/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
+
+function pl(n: number, singular: string, plural: string): string {
+  return n === 1 ? singular : plural;
+}
 
 function badge(value: string): string {
   const map: Record<string, (s: string) => string> = {
@@ -67,7 +70,8 @@ function renderAnalysis(report: AnalysisReport): void {
 
   row('Projeto',      chalk.white(report.projectName));
   row('Framework',    badge(report.framework));
-  row('Linguagem',    `${badge(language.primary)}  ${chalk.gray(`${language.tsFileCount} ts · ${language.jsFileCount} js`)}`);
+  const jsLabel = language.jsFileCount > 0 ? ` · ${language.jsFileCount} js` : '';
+  row('Linguagem',    `${badge(language.primary)}  ${chalk.gray(`(${language.tsFileCount} ts${jsLabel})`)}`);
   row('Build system', badge(report.buildSystem));
   row('Package mgr',  badge(report.packageManager));
 
@@ -82,12 +86,13 @@ function renderAnalysis(report: AnalysisReport): void {
 
     section('package.json');
     row('Dependências',     chalk.white(String(deps.length)));
-    row('Dev dependencies', chalk.white(String(devDeps.length)));
+    row('Dev deps',         chalk.white(String(devDeps.length)));
 
     if (scripts.length > 0) {
-      console.log(`  ${chalk.gray('Scripts'.padEnd(18))}`);
+      row('Scripts', chalk.gray(`(${scripts.length})`));
+      const trunc = (s: string) => s.length > 32 ? s.slice(0, 31) + '…' : s;
       scripts.forEach(([name, cmd]) =>
-        console.log(`    ${chalk.cyan(name.padEnd(14))} ${chalk.gray(cmd)}`)
+        console.log(`    ${chalk.cyan(name.padEnd(14))} ${chalk.gray(trunc(cmd))}`)
       );
     }
   }
@@ -109,7 +114,8 @@ function renderAnalysis(report: AnalysisReport): void {
   }
 
   if (supabase.migrations.count > 0) {
-    row('Migrations', chalk.white(`${supabase.migrations.count} arquivo(s)`));
+    const mc = supabase.migrations.count;
+    row('Migrations', chalk.white(`${mc} ${pl(mc, 'arquivo', 'arquivos')}`));
     supabase.migrations.files.forEach((f) =>
       console.log(`    ${chalk.gray(f.split('/').pop() ?? f)}`)
     );
@@ -122,11 +128,6 @@ function renderAnalysis(report: AnalysisReport): void {
     );
   }
 
-  if (supabase.detected && supabase.clientFiles.length > 0) {
-    row('Clientes', '');
-    supabase.clientFiles.forEach((f) => console.log(`    ${chalk.gray(f)}`));
-  }
-
   section('Variáveis de ambiente');
   if (report.envVars.length > 0) {
     report.envVars.forEach((v) => console.log(`  ${chalk.yellow(v)}`));
@@ -136,9 +137,11 @@ function renderAnalysis(report: AnalysisReport): void {
 
   if (report.routes.length > 0) {
     section('Rotas');
-    report.routes.forEach((r) =>
-      console.log(`  ${chalk.cyan(r.path.padEnd(30))} ${chalk.gray(r.file)}`)
-    );
+    const paths = report.routes.map((r) => r.path);
+    for (let i = 0; i < paths.length; i += 3) {
+      const group = paths.slice(i, i + 3).map((p) => chalk.cyan(p)).join(chalk.gray('  ·  '));
+      console.log(`  ${group}`);
+    }
   }
 
   section('Arquivos críticos');
@@ -156,6 +159,13 @@ const RISK_COLORS: Record<RiskLevel, (s: string) => string> = {
   high:     (s) => chalk.red(s),
   medium:   (s) => chalk.yellow(s),
   low:      (s) => chalk.gray(s),
+};
+
+const RISK_LABEL: Record<RiskLevel, string> = {
+  critical: 'CRÍTICO',
+  high:     'ALTO',
+  medium:   'MÉDIO',
+  low:      'BAIXO',
 };
 
 const CONFIDENCE_LABEL: Record<string, string> = {
@@ -198,7 +208,7 @@ function renderInfrastructure(inf: InfrastructureResult): void {
 
 function renderSupabasePlan(s: SupabasePlanResult): void {
   if (!s.requiresOwnInstance) return;
-  section('Supabase — requisitos');
+  section('Supabase');
   console.log(tick(s.requiresOwnInstance,   'Instância própria'));
   console.log(tick(s.requiresMigrations,    'Migrations de banco de dados'));
   console.log(tick(s.requiresAuth,          'Autenticação'));
@@ -207,11 +217,16 @@ function renderSupabasePlan(s: SupabasePlanResult): void {
   console.log(tick(s.requiresRealtime,      'Realtime'));
 
   if (s.manualSteps.length > 0) {
+    const MAX_STEPS = 5;
     console.log('');
-    console.log(`  ${chalk.gray('Passos manuais necessários:')}`);
-    s.manualSteps.forEach((step, i) =>
+    console.log(`  ${chalk.gray('Próximos passos:')}`);
+    s.manualSteps.slice(0, MAX_STEPS).forEach((step, i) =>
       console.log(`    ${chalk.gray(`${i + 1}.`)} ${step}`)
     );
+    if (s.manualSteps.length > MAX_STEPS) {
+      const rem = s.manualSteps.length - MAX_STEPS;
+      console.log(`    ${chalk.dim(`… e mais ${rem} ${pl(rem, 'passo', 'passos')} em deploy-instructions.md`)}`);
+    }
   }
 }
 
@@ -265,7 +280,7 @@ function renderPlan(plan: MigrationPlan): void {
     );
     sorted.forEach((r) => {
       const colorFn = RISK_COLORS[r.level];
-      console.log(`  ${colorFn(`[${r.level.toUpperCase()}]`)} ${r.message}`);
+      console.log(`  ${colorFn(`[${RISK_LABEL[r.level]}]`)} ${r.message}`);
       if (r.suggestion) {
         console.log(`    ${chalk.gray('→')} ${chalk.gray(r.suggestion)}`);
       }
@@ -273,16 +288,22 @@ function renderPlan(plan: MigrationPlan): void {
   }
 
   if (plan.checklist.length > 0) {
+    const MAX_ITEMS = 8;
     section('Checklist de migração');
-    plan.checklist.forEach((item) => {
+    plan.checklist.slice(0, MAX_ITEMS).forEach((item) => {
       const box      = chalk.gray('[ ]');
       const label    = item.required ? item.label : chalk.gray(item.label);
-      const required = item.required ? '' : chalk.gray('  (opcional)');
-      console.log(`  ${box} ${label}${required}`);
+      const optional = item.required ? '' : chalk.gray('  opcional');
+      console.log(`  ${box} ${label}${optional}`);
       if (item.notes) {
         console.log(`    ${chalk.gray(item.notes)}`);
       }
     });
+    if (plan.checklist.length > MAX_ITEMS) {
+      const rem = plan.checklist.length - MAX_ITEMS;
+      console.log('');
+      console.log(`  ${chalk.dim(`… e mais ${rem} ${pl(rem, 'passo', 'passos')} em deploy-instructions.md`)}`);
+    }
   }
 
   if (plan.warnings.length > 0) {
@@ -319,14 +340,15 @@ function renderMigration(result: MigrationResult): void {
 
   for (const { label, files } of categories) {
     if (files.length > 0) {
-      console.log(`  ${chalk.green('✓')}  ${chalk.white(label)} ${chalk.gray(`(${files.length} arquivo(s))`)}`);
+      console.log(`  ${chalk.green('✓')}  ${chalk.white(label)} ${chalk.gray(`(${files.length} ${pl(files.length, 'arquivo', 'arquivos')})`)}`);
     } else {
       console.log(`  ${chalk.gray('–')}  ${chalk.gray(label)} ${chalk.gray('(nenhum)')}`);
     }
   }
 
   console.log('');
-  row('Total gerado', chalk.white.bold(`${result.report.totalFilesGenerated} arquivo(s)`));
+  const tf = result.report.totalFilesGenerated;
+  row('Total gerado', chalk.white.bold(`${tf} ${pl(tf, 'arquivo', 'arquivos')}`));
 
   if (result.report.pendingManualSteps.length > 0) {
     section('Passos manuais pendentes');
@@ -343,7 +365,7 @@ function renderMigration(result: MigrationResult): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Leia: ${path.join(result.outputDir, 'deploy', 'deploy-instructions.md')}`));
+  console.log(chalk.dim(`  → ${result.outputDir}/`));
   console.log('');
 }
 
@@ -362,7 +384,7 @@ const SEVERITY_LABEL: Record<string, string> = {
 function renderIssue(issue: ValidationIssue): void {
   const colorFn = SEVERITY_COLOR[issue.severity] ?? ((s: string) => s);
   const label   = SEVERITY_LABEL[issue.severity] ?? issue.severity.toUpperCase();
-  console.log(`  ${colorFn(`[${label}]`)} ${chalk.gray(`(${issue.rule})`)} ${issue.message}`);
+  console.log(`  ${colorFn(`[${label}]`)} ${issue.message}`);
   if (issue.suggestion) {
     console.log(`    ${chalk.gray('→')} ${chalk.gray(issue.suggestion)}`);
   }
@@ -375,21 +397,23 @@ function renderValidation(result: ValidationResult): void {
 
   console.log('');
   console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
-  console.log(headerColor(`  │${'  Relatório de Validação'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  │${'  Validação'.padEnd(W - 2)}│`));
   console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
   console.log('');
 
-  row('Regras executadas', chalk.white(String(result.summary.rulesExecuted)));
+  const nc = result.summary.criticalCount;
+  const nw = result.summary.warningCount;
+  const ni = result.summary.infoCount;
 
   if (result.safeToMigrate) {
-    row('Status', chalk.green.bold('✓ SEGURO para migração'));
+    row('Status', chalk.green.bold('✓ Pronto para migração'));
   } else {
-    row('Status', chalk.red.bold(`✗ ${result.summary.criticalCount} issue(s) crítico(s) — configure antes de migrar`));
-    row('Dica', chalk.dim('Use --force em migrate/deploy para prosseguir mesmo assim'));
+    row('Status', chalk.red.bold(`✗ ${nc} ${pl(nc, 'bloqueador', 'bloqueadores')} — configure antes de migrar`));
+    row('Dica',   chalk.dim('Use --force no deploy para prosseguir mesmo assim'));
   }
 
   if (result.blockingIssues.length > 0) {
-    section('Issues Críticos (bloqueiam migração)');
+    section('Bloqueadores');
     result.blockingIssues.forEach(renderIssue);
   }
 
@@ -410,9 +434,9 @@ function renderValidation(result: ValidationResult): void {
 
   console.log('');
   console.log(chalk.gray(
-    `  Resumo: ${result.summary.criticalCount} crítico(s) · ` +
-    `${result.summary.warningCount} aviso(s) · ` +
-    `${result.summary.infoCount} info(s)`,
+    `  Resumo: ${nc} ${pl(nc, 'crítico', 'críticos')} · ` +
+    `${nw} ${pl(nw, 'aviso', 'avisos')} · ` +
+    `${ni} ${pl(ni, 'informação', 'informações')}`,
   ));
   console.log('');
 }
@@ -439,7 +463,8 @@ function renderDeploy(state: DeployState): void {
   }
 
   console.log('');
-  row('Total', chalk.white.bold(`${state.report.totalFilesGenerated} arquivo(s)`));
+  const td = state.report.totalFilesGenerated;
+  row('Total', chalk.white.bold(`${td} ${pl(td, 'arquivo', 'arquivos')}`));
 
   if (state.report.notes.length > 0) {
     section('Observações');
@@ -449,7 +474,8 @@ function renderDeploy(state: DeployState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Próximo passo: copie os arquivos de docker/ para a raiz do projeto e execute docker compose up`));
+  console.log(chalk.dim(`  → ${state.outputDir}/`));
+  console.log(chalk.dim(`    Copie docker/ para a raiz do projeto e execute docker compose up`));
   console.log('');
 }
 
@@ -487,7 +513,7 @@ function renderExecution(state: ExecutionState): void {
 
   console.log('');
   console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
-  console.log(headerColor(`  │${'  Executor — Pré-voo'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  │${'  Checklist de deploy'.padEnd(W - 2)}│`));
   console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
   console.log('');
 
@@ -532,8 +558,7 @@ function renderExecution(state: ExecutionState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Plano: ${state.outputDir}/execution/execution-plan.json`));
-  console.log(chalk.gray(`  Dry-run: ${state.outputDir}/execution/dry-run.md`));
+  console.log(chalk.dim(`  → ${state.outputDir}/execution/`));
   console.log('');
 }
 
@@ -617,8 +642,7 @@ function renderRuntime(state: RuntimeState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Log: ${state.outputDir}/runtime/runtime-log.json`));
-  console.log(chalk.gray(`  Sumário: ${state.outputDir}/runtime/runtime-summary.md`));
+  console.log(chalk.dim(`  → ${state.outputDir}/runtime/`));
   console.log('');
 }
 
@@ -643,7 +667,7 @@ function renderCicd(state: CicdState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Faça git add .github/ && git push para ativar o CI automaticamente.`));
+  console.log(chalk.dim(`  → git add .github/ && git push — ativa o CI automaticamente`));
   console.log('');
 }
 
@@ -681,7 +705,7 @@ function renderRemote(state: RemoteState): void {
 
   console.log('');
   console.log(headerColor(`  ┌${'─'.repeat(W - 2)}┐`));
-  console.log(headerColor(`  │${'  Remote — Planejamento de Deploy'.padEnd(W - 2)}│`));
+  console.log(headerColor(`  │${'  Deploy Remoto'.padEnd(W - 2)}│`));
   console.log(headerColor(`  └${'─'.repeat(W - 2)}┘`));
   console.log('');
 
@@ -738,9 +762,7 @@ function renderRemote(state: RemoteState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Plano: ${state.outputDir}/remote/remote-execution-plan.json`));
-  console.log(chalk.gray(`  Dry-run: ${state.outputDir}/remote/remote-dry-run.md`));
-  console.log(chalk.gray(`  Sumário: ${state.outputDir}/remote/remote-summary.md`));
+  console.log(chalk.dim(`  → ${state.outputDir}/remote/`));
   console.log('');
 }
 

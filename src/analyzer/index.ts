@@ -60,7 +60,7 @@ const registry = new DetectorRegistry()
  * Mantido para backward compatibility — novo código deve usar analyzeContext.
  */
 export function analyzeProject(files: ProjectFile[], projectName = 'unknown'): AnalysisReport {
-  logger.info(`Analisando ${files.length} arquivo(s)...`);
+  logger.info(`Analisando ${files.length} ${files.length === 1 ? 'arquivo' : 'arquivos'}...`);
 
   const packageJson = extractPackageJson(files);
   const partial     = registry.run(files, packageJson);

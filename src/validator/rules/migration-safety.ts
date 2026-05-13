@@ -25,7 +25,7 @@ export const migrationSafetyRule: ValidationRule = {
       issues.push(issue(
         'MIGRATIONS_REQUIRE_STAGING',
         'warning',
-        `${migrations.count} migration(s) SQL detectada(s) — aplicação incorreta pode corromper dados em produção`,
+        `${migrations.count} ${migrations.count === 1 ? 'migration SQL detectada' : 'migrations SQL detectadas'} — aplicação incorreta pode corromper dados em produção`,
         'Teste as migrations em ambiente de staging antes de aplicar em produção: supabase db push',
       ));
 

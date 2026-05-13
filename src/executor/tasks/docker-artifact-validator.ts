@@ -37,7 +37,7 @@ export function validateDockerArtifacts(ctx: ProjectContext, outputDir: string):
   if (missingFiles.length > 0) {
     issues.push({
       code: 'DOCKER_FILES_MISSING',
-      message: `${missingFiles.length} arquivo(s) Docker ausente(s) em outputDir: ${missingFiles.join(', ')}`,
+      message: `${missingFiles.length} ${missingFiles.length === 1 ? 'arquivo Docker ausente' : 'arquivos Docker ausentes'} em outputDir: ${missingFiles.join(', ')}`,
       suggestion: 'Execute o comando deploy para regenerar os artefatos Docker.',
       severity: 'blocker',
     });

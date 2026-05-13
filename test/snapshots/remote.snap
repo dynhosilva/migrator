@@ -47,7 +47,7 @@ Total estimado: **11KB**
 ssh ubuntu@your-server.example.com -i ~/.ssh/id_rsa "mkdir -p /opt/app/docker /opt/app/env"
 \`\`\`
 
-### Passo 2: Transfere 6 arquivo(s) para o servidor remoto
+### Passo 2: Transfere 6 arquivos para o servidor remoto
 
 - **Execução:** Máquina local
 - **Risco:** MÉDIO
@@ -107,7 +107,7 @@ exports[`Remote — Pipeline completo (react-vite) > remote-execution-plan.json 
     },
     {
       "command": "rsync -avz -e "ssh -i ~/.ssh/id_rsa" docker/Dockerfile docker/docker-compose.yml docker/.dockerignore env/.env.example env/.env.production.example reports/migration-summary.json ubuntu@your-server.example.com:/opt/app/",
-      "description": "Transfere 6 arquivo(s) para o servidor remoto",
+      "description": "Transfere 6 arquivos para o servidor remoto",
       "id": "transfer-files",
       "remote": false,
       "requires": [

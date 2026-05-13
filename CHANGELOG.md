@@ -7,6 +7,31 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [Unreleased] — WOW moment / demo-first UX
+
+### Adicionado
+
+- **`lovable-migrate demo`** — comando de demonstração com projeto de exemplo embutido
+  - Zero input necessário: `npx lovable-migrate demo` funciona sem instalar globalmente
+  - Fixture realista: React 18 · TypeScript · Vite · Supabase (auth + storage + realtime) · Tailwind · shadcn/ui · 2 migrations · 2 Edge Functions · 5 rotas · 4 env vars
+  - Executa o pipeline completo `analyze → plan → validate` (puro, sem I/O em disco)
+  - Banner de contexto + CTA acionável ao final
+  - `src/demo/fixture.ts` — 21 arquivos de projeto embutidos como `ProjectFile[]`
+  - `src/demo/index.ts` — `runDemo()` síncrona, testável, desacoplada do CLI
+
+### Melhorado
+
+- README — seção "Demo" acima de "Instalação": `npx lovable-migrate demo` como ponto de entrada de zero-fricção
+- Quick Start — `demo` listado como passo 0 antes de `analyze` e `deploy`
+- `program.description` do CLI — `demo` incluído nos exemplos de uso
+
+### Testes
+
+- 272 testes (Vitest) — 18 arquivos de teste
+- `test/integration/demo.test.ts` — 14 asserções sobre fixture + pipeline + `runDemo()`
+
+---
+
 ## [0.2.0] — 2026-05-12
 
 ### GitHub Actions generator

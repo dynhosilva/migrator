@@ -19,7 +19,7 @@ export function generateChecklist(
   if (env && env.required.length > 0) {
     items.push(item(
       'env-config',
-      `Configurar ${env.required.length} variável(eis) de ambiente`,
+      `Configurar ${env.required.length} ${env.required.length === 1 ? 'variável de ambiente' : 'variáveis de ambiente'}`,
       true,
       env.required.join(', '),
     ));

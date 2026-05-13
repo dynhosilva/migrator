@@ -80,7 +80,7 @@ exports[`POST /plan — react-vite > data normalizada corresponde ao snapshot 1`
     },
     {
       "id": "env-config",
-      "label": "Configurar 2 variável(eis) de ambiente",
+      "label": "Configurar 2 variáveis de ambiente",
       "notes": "VITE_API_URL, VITE_APP_TITLE",
       "required": true,
     },
@@ -160,7 +160,7 @@ exports[`POST /plan — react-vite > data normalizada corresponde ao snapshot 1`
   "risks": [
     {
       "level": "critical",
-      "message": "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+      "message": "2 variáveis de ambiente precisam ser configuradas antes do deploy",
       "suggestion": "Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação",
     },
   ],
@@ -182,7 +182,7 @@ exports[`POST /remote — react-vite > data normalizada corresponde ao snapshot 
     },
     {
       "command": "rsync -avz -e "ssh -i ~/.ssh/id_rsa" docker/Dockerfile docker/docker-compose.yml docker/.dockerignore env/.env.example env/.env.production.example reports/migration-summary.json ubuntu@your-server.example.com:/opt/app/",
-      "description": "Transfere 6 arquivo(s) para o servidor remoto",
+      "description": "Transfere 6 arquivos para o servidor remoto",
       "id": "transfer-files",
       "remote": false,
       "requires": [

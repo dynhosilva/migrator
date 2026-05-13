@@ -75,7 +75,7 @@ export function deployProject(ctx: ProjectContext, outputDir: string): DeploySta
 
   writeGeneratedFiles(resolvedOutputDir, allFiles);
 
-  logger.info(`${allFiles.length} arquivo(s) Docker gerado(s).`);
+  logger.info(`${allFiles.length} ${allFiles.length === 1 ? 'arquivo Docker gerado' : 'arquivos Docker gerados'}.`);
 
   return {
     projectName: ctx.analysis.projectName,

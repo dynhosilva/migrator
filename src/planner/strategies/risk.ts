@@ -68,9 +68,10 @@ export function detectRisks(analysis: AnalysisReport, partial: Partial<Migration
   }
 
   if (env?.required && env.required.length > 0) {
+    const n = env.required.length;
     risks.push({
       level:      'critical',
-      message:    `${env.required.length} variável(eis) de ambiente precisam ser configuradas antes do deploy`,
+      message:    `${n} ${n === 1 ? 'variável de ambiente precisa ser configurada' : 'variáveis de ambiente precisam ser configuradas'} antes do deploy`,
       suggestion: 'Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação',
     });
   }

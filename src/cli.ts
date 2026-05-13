@@ -13,6 +13,7 @@ import { prepareContext }  from './remote';
 import { cicdContext }     from './cicd';
 import { startServer }     from './server';
 import { startTui }        from './tui';
+import { runDemo }         from './demo';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -26,10 +27,11 @@ program
     'Migration engine for Lovable.dev exported projects',
     '',
     'Exemplos:',
+    '  $ lovable-migrate demo                               # veja em ação agora',
     '  $ lovable-migrate analyze ./meu-projeto',
     '  $ lovable-migrate deploy ./meu-projeto --output ./output',
-    '  $ lovable-migrate ui                         # wizard interativo (recomendado)',
-    '  $ lovable-migrate server --port 3001         # API HTTP',
+    '  $ lovable-migrate ui                                 # wizard interativo (recomendado)',
+    '  $ lovable-migrate server --port 3001                 # API HTTP',
   ].join('\n'))
   .version(VERSION);
 
@@ -443,6 +445,13 @@ program
       logger.error((err as Error).message);
       process.exit(1);
     }
+  });
+
+program
+  .command('demo')
+  .description('Demonstração com projeto de exemplo embutido — sem input necessário')
+  .action(() => {
+    runDemo();
   });
 
 program

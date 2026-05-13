@@ -35,22 +35,22 @@ export function Summary({ ctx, outputDir, nav }: SummaryProps): React.ReactEleme
         <Text bold color={theme.colors.white}>Resumo de artefatos gerados:</Text>
         {migration && (
           <Text color={theme.colors.muted}>
-            {'  '}{theme.symbols.check} Migração: {migration.report.totalFilesGenerated} arquivo(s)
+            {'  '}{theme.symbols.check} Migração: {migration.report.totalFilesGenerated} {migration.report.totalFilesGenerated === 1 ? 'arquivo' : 'arquivos'}
           </Text>
         )}
         {deploy && (
           <Text color={theme.colors.muted}>
-            {'  '}{theme.symbols.check} Docker: {deploy.report.totalFilesGenerated} arquivo(s)
+            {'  '}{theme.symbols.check} Docker: {deploy.report.totalFilesGenerated} {deploy.report.totalFilesGenerated === 1 ? 'arquivo' : 'arquivos'}
           </Text>
         )}
         {execution && (
           <Text color={theme.colors.muted}>
-            {'  '}{theme.symbols.check} Execução: {execution.plan.steps.length} passo(s) planejado(s)
+            {'  '}{theme.symbols.check} Execução: {execution.plan.steps.length} {execution.plan.steps.length === 1 ? 'passo planejado' : 'passos planejados'}
           </Text>
         )}
         {remote && (
           <Text color={theme.colors.muted}>
-            {'  '}{theme.symbols.check} Remote: {remote.transferPlan.files.length} arquivo(s) a transferir
+            {'  '}{theme.symbols.check} Remote: {remote.transferPlan.files.length} {remote.transferPlan.files.length === 1 ? 'arquivo a transferir' : 'arquivos a transferir'}
           </Text>
         )}
       </Box>

@@ -107,7 +107,7 @@ export function generateDeployInstructions(ctx: ProjectContext): DeployInstructi
       `| Estratégia        | ${DEPLOY_LABEL[deployStrategy.recommended]} |`,
       `| Confiança         | ${deployStrategy.confidence}             |`,
       `| Supabase          | ${analysis.supabase.detected ? 'Sim' : 'Não'}                                   |`,
-      `| Variáveis de env  | ${env.required.length} obrigatória(s)    |`,
+      `| Variáveis de env  | ${env.required.length} ${env.required.length === 1 ? 'obrigatória' : 'obrigatórias'}       |`,
       '',
       `> ${deployStrategy.reasoning}`,
     ]),
@@ -264,7 +264,7 @@ export function generateDeployInstructions(ctx: ProjectContext): DeployInstructi
   if (significantRisks.length > 0) {
     const riskLines = significantRisks.map(
       (r) =>
-        `- **[${r.level.toUpperCase()}]** ${r.message}${r.suggestion ? `\n  → ${r.suggestion}` : ''}`,
+        `- **[${r.level === 'critical' ? 'CRÍTICO' : r.level === 'high' ? 'ALTO' : r.level === 'medium' ? 'MÉDIO' : 'BAIXO'}]** ${r.message}${r.suggestion ? `\n  → ${r.suggestion}` : ''}`,
     );
     lines.push(section('⚠️ Riscos Identificados', riskLines));
   }

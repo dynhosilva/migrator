@@ -1,6 +1,6 @@
 # lovable-migrate
 
-> **Migrate your Lovable.dev projects to self-hosted infrastructure — safely, step by step.**
+> **De Lovable.dev para produção em um comando.**
 
 [![npm version](https://img.shields.io/npm/v/lovable-migrate.svg)](https://www.npmjs.com/package/lovable-migrate)
 [![CI](https://github.com/dynhosilva/migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/dynhosilva/migrator/actions/workflows/ci.yml)
@@ -9,12 +9,173 @@
 
 ---
 
-`lovable-migrate` é uma engine de migração para projetos exportados do [Lovable.dev](https://lovable.dev). Ela analisa sua stack, gera artefatos Docker prontos para produção, planeja o deploy remoto e executa o build — tudo de forma controlada, reversível e sem modificar seu projeto original.
+```bash
+npx lovable-migrate demo   # veja em ação agora — sem instalar
+```
 
-**Três formas de usar:**
-- **CLI** — pipeline completo em um comando
-- **TUI** — wizard interativo no terminal
-- **API HTTP** — integração com CI/CD e automações
+<!-- hero screenshot — gerado via docs/gif-production.md -->
+<!-- <p align="center">
+  <img src="docs/media/demo-analysis.png"
+       alt="lovable-migrate detectando React 18 · Supabase · Tailwind · shadcn/ui automaticamente"
+       width="760">
+</p> -->
+
+Detecta sua stack automaticamente, identifica Supabase (auth, storage, migrations, edge functions), gera Dockerfile multi-stage, cria workflows GitHub Actions prontos para uso e planeja o deploy remoto — **sem modificar seu projeto original.**
+
+---
+
+## Quick Start
+
+```bash
+# Veja em ação — sem instalar, sem precisar de um projeto
+npx lovable-migrate demo
+
+# Pipeline completo — gera todos os artefatos
+lovable-migrate deploy ./meu-projeto --output ./output/meu-projeto
+
+# Wizard interativo — recomendado para primeiros projetos
+lovable-migrate ui
+```
+
+---
+
+## Como funciona
+
+```
+1. Analisa     → detecta framework, Supabase, env vars, rotas, build system
+2. Planeja     → gera estratégia de deploy, riscos e checklist de migração
+3. Gera        → Dockerfile + GitHub Actions + plano de execução — tudo em segundos
+```
+
+O projeto original nunca é modificado. Todos os artefatos vão para `--output`.
+
+---
+
+## O que você recebe
+
+Execute `lovable-migrate deploy ./meu-projeto` e receba imediatamente:
+
+```
+output/meu-projeto/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml              # CI: push + PR · Node [20, 22] · npm cache
+│       └── release.yml         # Release: tag v* · npm publish --dry-run
+├── docker/
+│   ├── Dockerfile              # Multi-stage otimizado para sua stack
+│   ├── docker-compose.yml      # Healthcheck e volumes configurados
+│   └── .dockerignore
+├── env/
+│   └── .env.example            # Todas as variáveis de ambiente detectadas
+├── deploy/
+│   └── deploy-instructions.md  # Comandos prontos para copiar
+├── execution/
+│   ├── execution-plan.json
+│   └── dry-run.md              # Preview antes de executar qualquer coisa
+└── reports/
+    └── migration-summary.json
+```
+
+Se Supabase for detectado, também gera:
+
+```
+├── supabase/
+│   ├── migrations/             # Cópias das migrations para aplicar no destino
+│   └── functions/<nome>/      # Edge Functions prontas para deploy via CLI
+```
+
+---
+
+## Terminal preview
+
+<!-- GIF hero — gerado via docs/gif-production.md -->
+<!-- <p align="center">
+  <img src="docs/media/demo-full.gif"
+       alt="lovable-migrate demo — 25 segundos do banner à lista de artefatos"
+       width="760">
+</p> -->
+
+```
+$ npx lovable-migrate demo
+
+  ╔══════════════════════════════════════════════════════╗
+  ║  lovable-migrate · demo                              ║
+  ╚══════════════════════════════════════════════════════╝
+
+  Projeto de exemplo: my-saas-app
+  React 18 · TypeScript · Vite · Supabase · Tailwind · shadcn/ui
+
+  ┌──────────────────────────────────────────────────────┐
+  │  Relatório de Análise                                │
+  └──────────────────────────────────────────────────────┘
+
+  Projeto            my-saas-app
+  Framework          react
+  Linguagem          typescript  (15 ts)
+  Build system       vite
+  Package mgr        npm
+  Lovable            ✓  .lovable
+
+  Supabase
+  ──────────────────────────────────────────────────────
+  ✓  Detectado
+  ✓  Auth
+  ✓  Storage
+  ✓  Realtime
+  Migrations         2 arquivos
+    20240101000000_initial.sql
+    20240115000000_add_teams.sql
+  Edge Functions     2
+    send-email
+    process-payment
+
+  Variáveis de ambiente
+  ──────────────────────────────────────────────────────
+  VITE_SUPABASE_URL
+  VITE_SUPABASE_ANON_KEY
+  VITE_APP_URL
+  VITE_STRIPE_PUBLIC_KEY
+
+  Rotas
+  ──────────────────────────────────────────────────────
+  /  ·  /auth  ·  /dashboard
+  /settings  ·  /profile
+
+  [ ... Plano de Migração · Checklist · Validação ... ]
+
+  ┌──────────────────────────────────────────────────────┐
+  │  O que deploy geraria para este projeto              │
+  └──────────────────────────────────────────────────────┘
+
+  GitHub Actions
+  ✓  .github/workflows/ci.yml         push + PR · Node [20, 22] · npm cache
+  ✓  .github/workflows/release.yml    tag v* · npm publish --dry-run
+
+  Docker
+  ✓  docker/Dockerfile                multi-stage · nginx:alpine
+  ✓  docker/docker-compose.yml        healthcheck · volumes
+  ✓  docker/.dockerignore
+
+  Configuração
+  ✓  env/.env.example                 4 variáveis detectadas
+  ✓  deploy/deploy-instructions.md    comandos prontos para copiar
+  ✓  supabase/migrations/             2 arquivos SQL
+  ✓  supabase/functions/              2 Edge Functions
+
+  Execução e planejamento
+  ✓  execution/execution-plan.json
+  ✓  execution/dry-run.md             preview sem executar nada
+  ✓  reports/migration-summary.json
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓  Análise concluída — nenhum bloqueador detectado.
+
+  Pronto para migrar seu projeto real?
+
+    lovable-migrate deploy ./meu-projeto
+    lovable-migrate ui               wizard interativo — recomendado
+```
 
 ---
 
@@ -22,58 +183,10 @@
 
 ```bash
 npm install -g lovable-migrate
+lovable-migrate --version   # verifica a instalação
 ```
 
 **Requisito:** Node.js >= 20.0.0
-
-```bash
-lovable-migrate --version  # verifica a instalação
-```
-
----
-
-## Quick Start
-
-```bash
-# 1. Analisar a stack do projeto
-lovable-migrate analyze ./meu-projeto
-
-# 2. Pipeline completo — gera todos os artefatos
-lovable-migrate deploy ./meu-projeto --output ./output/meu-projeto
-
-# 3. Wizard interativo (recomendado para primeiros projetos)
-lovable-migrate ui
-```
-
-### Saída gerada
-
-```
-output/meu-projeto/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                    # CI — push/PR, Node matrix [20, 22], npm cache
-│       └── release.yml              # Release — tag v*, npm publish --dry-run
-├── env/
-│   ├── .env.example                  # todas as variáveis detectadas
-│   └── .env.production.example
-├── supabase/                         # somente se Supabase detectado
-│   ├── migrations/*.sql
-│   └── functions/<nome>/
-├── docker/
-│   ├── Dockerfile                    # multi-estágio, otimizado para a stack
-│   ├── docker-compose.yml
-│   └── .dockerignore
-├── deploy/
-│   └── deploy-instructions.md        # comandos prontos para copiar
-├── execution/
-│   ├── execution-plan.json
-│   └── dry-run.md                    # preview sem executar nada
-├── remote/
-│   ├── remote-execution-plan.json    # plano SSH completo
-│   └── remote-dry-run.md
-└── reports/
-    └── migration-summary.json
-```
 
 ---
 
@@ -82,7 +195,6 @@ output/meu-projeto/
 Cada comando executa as fases anteriores mais a sua:
 
 ```
-inspect   → carrega arquivos
 analyze   → detecta stack, framework, env vars, Supabase
 plan      → gera estratégia de deploy e lista de riscos
 validate  → verifica segurança — bloqueia migrações inseguras
@@ -94,13 +206,13 @@ remote    → planeja deploy remoto (sem SSH real)
 ```
 
 ```bash
-# Apenas análise
+# Apenas análise — zero efeitos colaterais
 lovable-migrate analyze ./projeto
 
-# Gerar Dockerfile + artefatos
+# Gerar Dockerfile + artefatos + GitHub Actions
 lovable-migrate deploy ./projeto --output ./output
 
-# Com planejamento remoto
+# Planejar deploy remoto
 lovable-migrate remote ./projeto \
   --ssh-host meu-servidor.com \
   --ssh-user deploy \
@@ -122,7 +234,7 @@ lovable-migrate remote ./projeto \
 
 **Package managers:** npm, yarn, pnpm, bun
 
-**Integrações detectadas automaticamente:** Supabase (auth, storage, migrations, edge functions), Tailwind, Shadcn/ui
+**Detectado automaticamente:** Supabase (auth, storage, migrations, edge functions), Tailwind, Shadcn/ui
 
 ---
 
@@ -354,9 +466,9 @@ Veja a pasta [`examples/`](examples/) para projetos funcionais:
 | ✅ | Remote — planejamento de deploy remoto |
 | ✅ | API HTTP — Fastify com rate limiting |
 | ✅ | TUI — wizard interativo (Ink/React) |
+| ✅ | GitHub Actions generator — ci.yml + release.yml determinísticos |
 | 🔲 | Re-sync — re-sincronização com Lovable/Supabase |
 | 🔲 | Hostinger integration — deploy automático em VPS |
-| ✅ | GitHub Actions generator — ci.yml + release.yml determinísticos |
 | 🔲 | Supabase CLI integration — execute migrations automaticamente |
 
 Roadmap completo: [ROADMAP.md](ROADMAP.md)
@@ -384,6 +496,7 @@ Contribuições são bem-vindas! Veja [CONTRIBUTING.md](CONTRIBUTING.md) para o 
 git clone https://github.com/dynhosilva/migrator
 cd lovable-migrate
 npm install
+npm run dev -- demo           # veja o demo funcionando
 npm run dev -- analyze ./examples/vite-react
 ```
 
@@ -403,6 +516,12 @@ npm run dev -- analyze ./examples/vite-react
 | [Deploy remoto](docs/remote.md) | Planejamento SSH e host profiles |
 | [GitHub Actions](docs/cicd.md) | Geração de workflows — arquitetura, builders, filosofia |
 | [Desenvolvimento](docs/development.md) | Setup, testes e como adicionar fases |
+| [Screenshots](docs/screenshots.md) | Guia para capturas promocionais |
+| [GIF storyboard](docs/gif-storyboard.md) | Narrativa e sequência do GIF de demonstração |
+| [GIF production](docs/gif-production.md) | Comandos exatos para gravar e exportar o GIF |
+| [Social preview](docs/social-preview.md) | Specs da imagem de preview social (GitHub, Twitter, LinkedIn) |
+| [Launch assets](docs/launch-assets.md) | Tweet, Product Hunt, YouTube — copy de lançamento |
+| [Social assets](docs/social-assets.md) | Templates de imagem por plataforma |
 
 ---
 

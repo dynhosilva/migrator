@@ -48,6 +48,7 @@
     "test:watch": "vitest",
     "test:snapshots": "vitest run -u",
     "test:dist": "vitest run test/packaging/",
+    "preview:html": "ts-node scripts/generate-html-preview.ts",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {

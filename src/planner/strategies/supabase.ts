@@ -28,8 +28,9 @@ export function planSupabase(analysis: AnalysisReport): SupabasePlanResult {
   }
 
   if (supabase.migrations.count > 0) {
+    const mc = supabase.migrations.count;
     manualSteps.push(
-      `Executar ${supabase.migrations.count} migration(s) via Supabase CLI (supabase db push)`,
+      `Executar ${mc} ${mc === 1 ? 'migration' : 'migrations'} via Supabase CLI (supabase db push)`,
     );
     manualSteps.push('Verificar ordem de execução e idempotência das migrations');
   }
@@ -41,7 +42,8 @@ export function planSupabase(analysis: AnalysisReport): SupabasePlanResult {
 
   if (supabase.edgeFunctions.count > 0) {
     const names = supabase.edgeFunctions.names.join(', ');
-    manualSteps.push(`Deployar Edge Function(s) via Supabase CLI: ${names}`);
+    const efc = supabase.edgeFunctions.count;
+    manualSteps.push(`Deployar ${efc === 1 ? 'Edge Function' : 'Edge Functions'} via Supabase CLI: ${names}`);
     warnings.push('Edge Functions não são deployadas automaticamente — requer Supabase CLI instalado e autenticado');
   }
 

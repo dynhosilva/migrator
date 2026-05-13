@@ -27,7 +27,7 @@ export const envRule: ValidationRule = {
       issues.push(issue(
         'ENV_VARS_UNRESOLVED',
         'critical',
-        `${missing.length} variável(eis) de ambiente obrigatória(s) não configurada(s): ${missing.join(', ')}`,
+        `${missing.length} ${missing.length === 1 ? 'variável de ambiente obrigatória' : 'variáveis de ambiente obrigatórias'} não configurada${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}`,
         'Configure as variáveis no servidor destino antes de iniciar a aplicação. Template disponível em env/.env.example.',
       ));
     } else if (required.length === 0) {

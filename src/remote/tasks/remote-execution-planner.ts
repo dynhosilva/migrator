@@ -26,7 +26,7 @@ export function planRemoteExecution(
     localStep(
       'transfer-files',
       `rsync -avz -e "ssh ${keyFlag}" ${fileList} ${userHost}:${remotePath}/`,
-      `Transfere ${fileCount} arquivo(s) para o servidor remoto`,
+      `Transfere ${fileCount} ${fileCount === 1 ? 'arquivo' : 'arquivos'} para o servidor remoto`,
       { requires: ['create-remote-dirs'], risk: 'medium' },
     ),
     remoteStep(

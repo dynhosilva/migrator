@@ -5,7 +5,7 @@ exports[`MigrationResult — react-vite > migration-summary.json é JSON válido
   "allRisks": [
     {
       "level": "critical",
-      "message": "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+      "message": "2 variáveis de ambiente precisam ser configuradas antes do deploy",
       "suggestion": "Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação",
     },
   ],
@@ -26,7 +26,7 @@ exports[`MigrationResult — react-vite > migration-summary.json é JSON válido
     {
       "done": false,
       "id": "env-config",
-      "label": "Configurar 2 variável(eis) de ambiente",
+      "label": "Configurar 2 variáveis de ambiente",
       "required": true,
     },
     {
@@ -67,7 +67,7 @@ exports[`MigrationResult — react-vite > migration-summary.json é JSON válido
     },
   ],
   "criticalRisks": [
-    "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+    "2 variáveis de ambiente precisam ser configuradas antes do deploy",
   ],
   "deploy": {
     "alternatives": [
@@ -109,7 +109,7 @@ exports[`MigrationResult — react-vite > relatório MigrationResult normalizado
 | Estratégia        | Hosting Estático (CDN / Netlify / Vercel / S3) |
 | Confiança         | high             |
 | Supabase          | Não                                   |
-| Variáveis de env  | 2 obrigatória(s)    |
+| Variáveis de env  | 2 obrigatórias       |
 
 > react com vite gera bundle estático — ideal para CDN ou hosting simples
 
@@ -177,7 +177,7 @@ sudo cp -r dist/* /var/www/html/
 ## Checklist de Verificação
 
 - [ ] Clonar ou extrair o código-fonte do projeto
-- [ ] Configurar 2 variável(eis) de ambiente
+- [ ] Configurar 2 variáveis de ambiente
   > VITE_API_URL, VITE_APP_TITLE
 - [ ] Verificar se o build local funciona (npm run build)
 - [ ] Gerar build de produção (vite)
@@ -188,7 +188,7 @@ sudo cp -r dist/* /var/www/html/
 
 ## ⚠️ Riscos Identificados
 
-- **[CRITICAL]** 2 variável(eis) de ambiente precisam ser configuradas antes do deploy
+- **[CRÍTICO]** 2 variáveis de ambiente precisam ser configuradas antes do deploy
   → Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação
 
 ## Notas de Compatibilidade
@@ -360,12 +360,12 @@ e passos manuais pendentes.
   "pendingManualSteps": [],
   "warnings": [],
   "criticalRisks": [
-    "2 variável(eis) de ambiente precisam ser configuradas antes do deploy"
+    "2 variáveis de ambiente precisam ser configuradas antes do deploy"
   ],
   "allRisks": [
     {
       "level": "critical",
-      "message": "2 variável(eis) de ambiente precisam ser configuradas antes do deploy",
+      "message": "2 variáveis de ambiente precisam ser configuradas antes do deploy",
       "suggestion": "Configure todas as variáveis de ambiente no servidor destino antes de iniciar a aplicação"
     }
   ],
@@ -378,7 +378,7 @@ e passos manuais pendentes.
     },
     {
       "id": "env-config",
-      "label": "Configurar 2 variável(eis) de ambiente",
+      "label": "Configurar 2 variáveis de ambiente",
       "required": true,
       "done": false
     },

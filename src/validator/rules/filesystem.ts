@@ -38,7 +38,7 @@ export const filesystemRule: ValidationRule = {
       issues.push(issue(
         'PATH_TRAVERSAL_DETECTED',
         'critical',
-        `${suspiciousPaths.length} arquivo(s) com caminho suspeito detectado(s) — possível path traversal`,
+        `${suspiciousPaths.length} ${suspiciousPaths.length === 1 ? 'arquivo com caminho suspeito detectado' : 'arquivos com caminhos suspeitos detectados'} — possível path traversal`,
         'Inspecione manualmente: ' + suspiciousPaths.map((f) => f.relativePath).slice(0, 3).join(', '),
       ));
     }

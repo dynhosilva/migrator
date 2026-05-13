@@ -78,7 +78,7 @@ export function generateFolderReadmes(ctx: ProjectContext): FolderReadmeArtifact
     if (analysis.supabase.migrations.count > 0) {
       subLines.push(
         '',
-        `## migrations/ (${analysis.supabase.migrations.count} arquivo(s))`,
+        `## migrations/ (${analysis.supabase.migrations.count} ${analysis.supabase.migrations.count === 1 ? 'arquivo' : 'arquivos'})`,
         '',
         'Execute com:',
         '```bash',

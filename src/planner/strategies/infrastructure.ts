@@ -15,13 +15,15 @@ export function planInfrastructure(analysis: AnalysisReport): InfrastructureResu
     notes.push('Instância própria do Supabase é necessária');
   }
   if (requiresDatabase) {
-    notes.push(`${supabase.migrations.count} migration(s) precisam ser aplicadas ao banco de dados`);
+    const mc = supabase.migrations.count;
+    notes.push(`${mc} ${mc === 1 ? 'migration precisa ser aplicada' : 'migrations precisam ser aplicadas'} ao banco de dados`);
   }
   if (requiresObjectStorage) {
     notes.push('Supabase Storage em uso — buckets precisam ser criados e políticas RLS configuradas');
   }
   if (requiresServerlessEdge) {
-    notes.push(`${supabase.edgeFunctions.count} Edge Function(s) precisam ser deployadas manualmente`);
+    const ef = supabase.edgeFunctions.count;
+    notes.push(`${ef} ${ef === 1 ? 'Edge Function precisa ser deployada' : 'Edge Functions precisam ser deployadas'} manualmente`);
   }
   if (requiresNodeServer) {
     notes.push('Next.js requer servidor Node.js (VPS, Docker ou plataforma compatível)');

@@ -62,7 +62,7 @@ export function migrateProject(ctx: ProjectContext, outputDir: string): Migratio
   // 3. Escreve os arquivos em disco (única camada com I/O)
   writeGeneratedFiles(resolvedOutputDir, allFiles);
 
-  logger.info(`${allFiles.length} arquivo(s) gerado(s) em: ${resolvedOutputDir}`);
+  logger.info(`${allFiles.length} ${allFiles.length === 1 ? 'arquivo gerado' : 'arquivos gerados'} em: ${resolvedOutputDir}`);
 
   return {
     projectName:         ctx.analysis.projectName,
