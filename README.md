@@ -13,12 +13,11 @@
 npx lovable-migrate demo   # veja em ação agora — sem instalar
 ```
 
-<!-- hero screenshot — gerado via docs/gif-production.md -->
-<!-- <p align="center">
+<p align="center">
   <img src="docs/media/demo-analysis.png"
        alt="lovable-migrate detectando React 18 · Supabase · Tailwind · shadcn/ui automaticamente"
        width="760">
-</p> -->
+</p>
 
 Detecta sua stack automaticamente, identifica Supabase (auth, storage, migrations, edge functions), gera Dockerfile multi-stage, cria workflows GitHub Actions prontos para uso e planeja o deploy remoto — **sem modificar seu projeto original.**
 
@@ -88,12 +87,11 @@ Se Supabase for detectado, também gera:
 
 ## Terminal preview
 
-<!-- GIF hero — gerado via docs/gif-production.md -->
-<!-- <p align="center">
+<p align="center">
   <img src="docs/media/demo-full.gif"
        alt="lovable-migrate demo — 25 segundos do banner à lista de artefatos"
        width="760">
-</p> -->
+</p>
 
 ```
 $ npx lovable-migrate demo
