@@ -157,7 +157,7 @@ Pipeline imutável — cada fase retorna novo contexto
 Registry pattern — adicionar detector sem tocar orquestrador
 CI: Node 20/22 + npm publish automático via tag semântica
 
-Open source: github.com/your-org/lovable-migrate
+Open source: github.com/dynhosilva/migrator
 ```
 
 **Post 7 — CTA**

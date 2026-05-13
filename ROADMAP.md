@@ -23,26 +23,25 @@ Pipeline completo de análise → geração de artefatos → planejamento de dep
 | ✅ API HTTP | Fastify — 8 endpoints, rate limiting, schema validation |
 | ✅ TUI | Wizard interativo — Ink/React, 12 telas |
 | ✅ CLI | 10 comandos com flags documentadas |
-| ✅ CI/CD | GitHub Actions — Node 20/22, release pipeline |
-| ✅ Docs | 9 documentos técnicos + README + CONTRIBUTING |
+| ✅ CI/CD próprio | GitHub Actions — Node 20/22, release pipeline |
+| ✅ Docs | 10 documentos técnicos + README + CONTRIBUTING |
 
 ---
 
-## Em avaliação — v0.2.0
+## Concluído — v0.2.0
 
-### Re-sync com Lovable (`src/sync/`)
+GitHub Actions generator e polish de onboarding.
 
-Permite re-sincronizar um projeto que já passou pela migração com atualizações do Lovable.dev — sem refazer tudo do zero.
-
-**Casos de uso:**
-- Desenvolvedor continua iterando no Lovable após a migração
-- Supabase schema mudou — gerar diff de migrations
-- Novas edge functions foram adicionadas
-
-**Escopo proposto:**
-- Detectar diff entre versão atual e versão migrada
-- Gerar patch de artefatos (apenas o que mudou)
-- Manter compatibilidade com artefatos v0.1.0
+| Módulo | Descrição |
+|---|---|
+| ✅ CICD | Gera `.github/workflows/ci.yml` e `release.yml` — determinísticos, tipados, zero string concatenation |
+| ✅ yaml package | Serialização YAML via eemeli/yaml v2 — outputs snapshot-stable |
+| ✅ renderCicd() | Workflows visíveis no output principal do `deploy` |
+| ✅ Timestamps removidos | Output interativo limpo — sem ISO strings |
+| ✅ Metadados corrigidos | URLs reais do repositório em todos os arquivos |
+| ✅ docs/cicd.md | Documentação completa: arquitetura, builders, filosofia, snapshot strategy |
+| ✅ examples/generated-workflows | Exemplos reais de ci.yml e release.yml |
+| ✅ 257 testes | Zero regressões na expansão do pipeline |
 
 ---
 
@@ -73,19 +72,6 @@ Deploy automático em VPS Hostinger via API.
 - Rollback automático em caso de falha
 
 **Nota:** esta fase requer design cuidadoso de segurança — credenciais, escopo de acesso e auditabilidade.
-
----
-
-## Planejado — v0.5.0
-
-### GitHub Actions generator
-
-Gerar arquivos `.github/workflows/` prontos para uso com base na stack detectada.
-
-**Comportamento proposto:**
-- Workflow de CI (lint, test, build)
-- Workflow de CD (build Docker, push para registry, deploy)
-- Configurável para GitHub Actions, GitLab CI ou Bitbucket Pipelines
 
 ---
 
@@ -121,7 +107,7 @@ Executar migrations Supabase, deployar edge functions e configurar auth — alé
 
 ## Como contribuir com o roadmap
 
-Abra uma [discussion](https://github.com/your-org/lovable-migrate/discussions) com:
+Abra uma [discussion](https://github.com/dynhosilva/migrator/discussions) com:
 - O caso de uso que você quer resolver
 - O stack/projeto que você tem em mãos
 - O que a ferramenta atual faz ou não faz

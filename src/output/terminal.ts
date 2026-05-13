@@ -17,6 +17,7 @@ import type { DeployState } from '../deploy/types';
 import type { ExecutionState, ExecutionIssue as ExecIssue } from '../executor/types';
 import type { RuntimeState, RuntimeIssue as RtIssue } from '../runtime/types';
 import type { RemoteState, RemoteIssue as RmIssue } from '../remote/types';
+import type { CicdState } from '../cicd/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -147,8 +148,6 @@ function renderAnalysis(report: AnalysisReport): void {
     console.log(`  ${chalk.gray('Nenhum identificado')}`);
   }
 
-  console.log('');
-  console.log(chalk.gray(`  Analisado em: ${report.detectedAt}`));
   console.log('');
 }
 
@@ -294,8 +293,6 @@ function renderPlan(plan: MigrationPlan): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Planejado em: ${plan.plannedAt}`));
-  console.log('');
 }
 
 function renderMigration(result: MigrationResult): void {
@@ -346,7 +343,6 @@ function renderMigration(result: MigrationResult): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Migrado em: ${result.migratedAt}`));
   console.log(chalk.gray(`  Leia: ${path.join(result.outputDir, 'deploy', 'deploy-instructions.md')}`));
   console.log('');
 }
@@ -418,7 +414,6 @@ function renderValidation(result: ValidationResult): void {
     `${result.summary.warningCount} aviso(s) · ` +
     `${result.summary.infoCount} info(s)`,
   ));
-  console.log(chalk.gray(`  Validado em: ${result.validatedAt}`));
   console.log('');
 }
 
@@ -454,7 +449,6 @@ function renderDeploy(state: DeployState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Deployado em: ${state.deployedAt}`));
   console.log(chalk.gray(`  Próximo passo: copie os arquivos de docker/ para a raiz do projeto e execute docker compose up`));
   console.log('');
 }
@@ -538,7 +532,6 @@ function renderExecution(state: ExecutionState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Executado em: ${state.executedAt}`));
   console.log(chalk.gray(`  Plano: ${state.outputDir}/execution/execution-plan.json`));
   console.log(chalk.gray(`  Dry-run: ${state.outputDir}/execution/dry-run.md`));
   console.log('');
@@ -624,9 +617,33 @@ function renderRuntime(state: RuntimeState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Executado em: ${state.ranAt}`));
   console.log(chalk.gray(`  Log: ${state.outputDir}/runtime/runtime-log.json`));
   console.log(chalk.gray(`  Sumário: ${state.outputDir}/runtime/runtime-summary.md`));
+  console.log('');
+}
+
+function renderCicd(state: CicdState): void {
+  const allFiles = [...state.ci.files, ...state.release.files];
+  if (allFiles.length === 0) return;
+
+  console.log('');
+  console.log(chalk.bold.green(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(chalk.bold.green(`  │${'  GitHub Actions'.padEnd(W - 2)}│`));
+  console.log(chalk.bold.green(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  section('Workflows gerados');
+  for (const f of state.ci.files) {
+    console.log(`  ${chalk.green('✓')}  ${chalk.white(f.relativePath)}`);
+    console.log(`     ${chalk.gray('push + pull_request em main — Node matrix [20, 22] — npm cache')}`);
+  }
+  for (const f of state.release.files) {
+    console.log(`  ${chalk.green('✓')}  ${chalk.white(f.relativePath)}`);
+    console.log(`     ${chalk.gray('push de tag v* — npm publish --dry-run por padrão')}`);
+  }
+
+  console.log('');
+  console.log(chalk.gray(`  Faça git add .github/ && git push para ativar o CI automaticamente.`));
   console.log('');
 }
 
@@ -721,7 +738,6 @@ function renderRemote(state: RemoteState): void {
   }
 
   console.log('');
-  console.log(chalk.gray(`  Preparado em: ${state.preparedAt}`));
   console.log(chalk.gray(`  Plano: ${state.outputDir}/remote/remote-execution-plan.json`));
   console.log(chalk.gray(`  Dry-run: ${state.outputDir}/remote/remote-dry-run.md`));
   console.log(chalk.gray(`  Sumário: ${state.outputDir}/remote/remote-summary.md`));
@@ -750,6 +766,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.deploy) {
       renderDeploy(ctx.deploy);
+    }
+
+    if (ctx.cicd) {
+      renderCicd(ctx.cicd);
     }
 
     if (ctx.execution) {

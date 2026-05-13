@@ -7,6 +7,41 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [0.2.0] — 2026-05-12
+
+### GitHub Actions generator
+
+Geração determinística de workflows GitHub Actions a partir da análise do projeto.
+
+### Adicionado
+
+- **Módulo cicd** (`src/cicd/`) — nova fase do pipeline: `analyze → plan → validate → migrate → deploy → cicd → execute`
+- `cicdProject()` e `cicdContext()` — mesma convenção de todos os outros módulos
+- `CicdRegistry` — registry síncrono com o mesmo padrão dos módulos existentes
+- **`ci-workflow-generator`** — gera `.github/workflows/ci.yml`: push + PR em main, Node matrix [20, 22], npm cache, steps build/test condicionais ao `package.json`
+- **`release-workflow-generator`** — gera `.github/workflows/release.yml`: tag `v*`, Node 20 LTS, registry-url npm, `npm publish --dry-run` por padrão (seguro sem configuração)
+- `workflow-types.ts` — tipos TypeScript de objetos GitHub Actions (zero string concatenation)
+- `builders/workflow.ts` — step builders tipados + `serializeWorkflow()` via pacote `yaml`
+- **`yaml` package** (eemeli/yaml v2) adicionado como dependência — serialização determinística de YAML
+- `renderCicd()` no `TerminalRenderer` — workflows aparecem no output principal do `deploy`
+- `examples/generated-workflows/ci.yml` e `release.yml` — exemplos reais gerados
+- `docs/cicd.md` — documentação completa do módulo
+
+### Melhorado
+
+- `deploy`, `execute`, `runtime` e `remote` CLI — incluem fase cicd automaticamente
+- `TerminalRenderer` — timestamps ISO removidos do output interativo (ficam disponíveis em `--verbose`)
+- README — seção GitHub Actions com exemplos reais, pipeline e filosofia safe-by-default
+- `docs/development.md` — seção de filosofia de snapshots e cross-platform guarantees
+- Todos os metadados `your-org` corrigidos com URL real do repositório
+
+### Testes
+
+- 257 testes (Vitest) — 17 arquivos de teste
+- 3 snapshots novos em `test/snapshots/cicd.snap` (workflows YAML verbatim)
+
+---
+
 ## [0.1.0] — 2026-05-10
 
 ### Lançamento inicial
@@ -35,7 +70,7 @@ Primeira versão pública do `lovable-migrate` — engine completa de migração
 #### Infraestrutura
 
 - TypeScript strict — compilação ES2020/CommonJS
-- 233 testes (Vitest) — integração, snapshots, TUI, packaging
+- 233 testes (Vitest) — integração, snapshots, TUI, packaging (257 na v0.2.0)
 - CI/CD — GitHub Actions com Node matrix [20, 22]
 - Release pipeline — tags semânticas → `npm publish` automático
 - Documentação completa — 9 documentos em `docs/`
@@ -60,7 +95,6 @@ Supabase: auth, storage, realtime, migrations, edge functions
 
 Ver [ROADMAP.md](ROADMAP.md) para detalhes.
 
-- **v0.2.0** — Re-sync com Lovable/Supabase
 - **v0.3.0** — Supabase CLI integration (migrations automáticas)
 - **v0.4.0** — Hostinger VPS deploy integration
 - **v1.0.0** — API estável, full feature parity

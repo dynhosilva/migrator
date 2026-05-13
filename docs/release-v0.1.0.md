@@ -160,7 +160,7 @@ A fase remote modela e planeja — nunca abre conexões. Todos os comandos são 
 
 Ver [CONTRIBUTING.md](../CONTRIBUTING.md) e [ROADMAP.md](../ROADMAP.md).
 
-Issues e discussions: https://github.com/your-org/lovable-migrate
+Issues e discussions: https://github.com/dynhosilva/migrator
 
 ---
 

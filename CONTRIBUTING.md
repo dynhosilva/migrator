@@ -16,8 +16,8 @@ Obrigado pelo interesse em contribuir! Este guia cobre o processo de contribuiç
 ## Antes de começar
 
 - Leia o [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- Para bugs, abra uma [issue](https://github.com/your-org/lovable-migrate/issues/new?template=bug_report.yml) antes de um PR
-- Para features, abra uma [discussion](https://github.com/your-org/lovable-migrate/discussions) para alinhamento antes de implementar
+- Para bugs, abra uma [issue](https://github.com/dynhosilva/migrator/issues/new?template=bug_report.yml) antes de um PR
+- Para features, abra uma [discussion](https://github.com/dynhosilva/migrator/discussions) para alinhamento antes de implementar
 - Para vulnerabilidades de segurança, **não abra issue pública** — siga o [SECURITY.md](SECURITY.md)
 
 ---
@@ -25,7 +25,7 @@ Obrigado pelo interesse em contribuir! Este guia cobre o processo de contribuiç
 ## Setup do ambiente
 
 ```bash
-git clone https://github.com/your-org/lovable-migrate
+git clone https://github.com/dynhosilva/migrator
 cd lovable-migrate
 npm install
 
@@ -203,4 +203,4 @@ Fixtures são somente leitura — nunca escreva em `test/fixtures/` a partir dos
 
 ## Dúvidas?
 
-Abra uma [discussion](https://github.com/your-org/lovable-migrate/discussions) ou uma issue com a label `question`.
+Abra uma [discussion](https://github.com/dynhosilva/migrator/discussions) ou uma issue com a label `question`.

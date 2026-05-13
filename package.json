@@ -31,11 +31,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/lovable-migrate.git"
+    "url": "https://github.com/dynhosilva/migrator.git"
   },
-  "homepage": "https://github.com/your-org/lovable-migrate#readme",
+  "homepage": "https://github.com/dynhosilva/migrator#readme",
   "bugs": {
-    "url": "https://github.com/your-org/lovable-migrate/issues"
+    "url": "https://github.com/dynhosilva/migrator/issues"
   },
   "scripts": {
     "build": "tsc",

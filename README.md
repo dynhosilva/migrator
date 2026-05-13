@@ -3,7 +3,7 @@
 > **Migrate your Lovable.dev projects to self-hosted infrastructure — safely, step by step.**
 
 [![npm version](https://img.shields.io/npm/v/lovable-migrate.svg)](https://www.npmjs.com/package/lovable-migrate)
-[![CI](https://github.com/your-org/lovable-migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/lovable-migrate/actions/workflows/ci.yml)
+[![CI](https://github.com/dynhosilva/migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/dynhosilva/migrator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
@@ -381,7 +381,7 @@ Para reportar vulnerabilidades: [SECURITY.md](SECURITY.md)
 Contribuições são bem-vindas! Veja [CONTRIBUTING.md](CONTRIBUTING.md) para o guia completo.
 
 ```bash
-git clone https://github.com/your-org/lovable-migrate
+git clone https://github.com/dynhosilva/migrator
 cd lovable-migrate
 npm install
 npm run dev -- analyze ./examples/vite-react
