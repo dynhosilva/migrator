@@ -21,11 +21,16 @@
   },
   "keywords": [
     "lovable",
+    "lovable.dev",
     "migration",
     "deploy",
     "supabase",
     "docker",
+    "dockerfile",
+    "github-actions",
     "cli",
+    "react",
+    "vite",
     "self-hosted"
   ],
   "license": "MIT",
