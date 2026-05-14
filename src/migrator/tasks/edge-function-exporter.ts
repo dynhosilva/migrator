@@ -21,8 +21,13 @@ export function exportEdgeFunctions(ctx: ProjectContext): EdgeFunctionArtifacts 
   const exportedNames: string[] = [];
 
   for (const name of supabase.edgeFunctions.names) {
-    const prefix = `supabase/functions/${name}/`;
-    const functionFiles = ctx.files.filter((f) => f.relativePath.startsWith(prefix));
+    // Matches both flat ("supabase/functions/<n>/") and nested-root
+    // ("project/supabase/functions/<n>/") paths from ZIP exports.
+    const flat   = `supabase/functions/${name}/`;
+    const nested = `/supabase/functions/${name}/`;
+    const functionFiles = ctx.files.filter((f) =>
+      f.relativePath.startsWith(flat) || f.relativePath.includes(nested)
+    );
 
     for (const f of functionFiles) {
       if (!isTextFile(f.relativePath)) continue;
@@ -30,7 +35,8 @@ export function exportEdgeFunctions(ctx: ProjectContext): EdgeFunctionArtifacts 
       const content = f.content.toString('utf-8');
       if (content.includes('\0')) continue; // conteúdo binário detectado
 
-      const relToFunctions = f.relativePath.replace(/^supabase\/functions\//, '');
+      // Strip everything up to and including "supabase/functions/" regardless of nested root.
+      const relToFunctions = f.relativePath.replace(/^(?:.*\/)?supabase\/functions\//, '');
       files.push({
         relativePath: `supabase/functions/${relToFunctions}`,
         content,

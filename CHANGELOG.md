@@ -7,6 +7,35 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [0.3.2] — 2026-05-13
+
+### Fix — nested-root ZIP: exportação de Edge Functions e entry points .jsx
+
+Patch cirúrgico sobre bugs restantes detectados após análise root-cause completa do caso `appsmartfinance-main/`.
+
+### Corrigido
+
+- **`edge-function-exporter.ts` — bug silencioso de exportação** (`src/migrator/tasks/edge-function-exporter.ts`)
+  - `startsWith('supabase/functions/<name>/')` retornava FALSE para paths com nested root (`project/supabase/functions/<name>/`)
+  - Edge functions eram detectadas corretamente pelo analyzer mas silenciosamente não exportadas pelo migrator
+  - Fix: substituído por `startsWith(flat) || includes(nested)` — funciona com qualquer profundidade de prefixo
+  - Segundo bug no mesmo arquivo: `replace(/^supabase\/functions\//)` não capturava nested roots → substituído por `replace(/^(?:.*\/)?supabase\/functions\//)`
+
+- **`KNOWN_ENTRY_POINTS` — entry points `.jsx` e `.js` ausentes** (`src/validator/rules/filesystem.ts`)
+  - Projetos CRA e React antigos que usam `src/main.jsx` ou `src/index.jsx` recebiam `NO_ENTRY_POINT` falso positivo
+  - Adicionados: `src/main.jsx`, `src/main.js`, `src/index.jsx`, `src/index.js`
+
+### Testes
+
+- 282 testes (Vitest) — 19 arquivos de teste
+- `test/integration/zip-nested-root.test.ts` — estendido de 5 para 9 testes; cobre agora a fase `migrateContext` completa
+  - `exporta edge functions corretamente mesmo com prefixo de pasta no ZIP` — regressão que pegaria o bug silencioso
+  - `artefatos de edge function têm paths corretos (sem prefixo do projeto)` — garante output limpo
+  - `exporta migrations com paths corretos` — confirma que migration-exporter continua correto
+  - `detecta Supabase com migrations e edge functions` — detector smoke test
+
+---
+
 ## [0.3.1] — 2026-05-13
 
 ### UX — Onboarding e calibração de severidade
