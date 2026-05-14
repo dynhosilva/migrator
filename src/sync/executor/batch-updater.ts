@@ -1,6 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserMapping, ColumnTarget, UpdateRecord } from '../types';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
 export async function executeUpdates(
   client: SupabaseClient,
   mappings: UserMapping[],
@@ -17,13 +23,31 @@ export async function executeUpdates(
       const batch = mappings.slice(i, i + batchSize);
 
       for (const mapping of batch) {
+        // UUID validation before every write — prevents injection-style issues
+        if (!isValidUuid(mapping.oldUserId) || !isValidUuid(mapping.newUserId)) {
+          const record: UpdateRecord = {
+            tableName: col.tableName,
+            columnName: col.columnName,
+            oldUserId: mapping.oldUserId,
+            newUserId: mapping.newUserId,
+            rowsAffected: 0,
+            durationMs: 0,
+            error: `UUID inválido: old=${mapping.oldUserId} new=${mapping.newUserId}`,
+          };
+          results.push(record);
+          onProgress?.(record);
+          continue;
+        }
+
         const start = Date.now();
 
+        // Use col.columnName in select to avoid hardcoding 'id' — avoids failing
+        // on tables with non-standard primary key names
         const { data, error } = await client
           .from(col.tableName)
           .update({ [col.columnName]: mapping.newUserId })
           .eq(col.columnName, mapping.oldUserId)
-          .select('id');
+          .select(col.columnName);
 
         const record: UpdateRecord = {
           tableName: col.tableName,

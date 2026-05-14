@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserMapping, ColumnTarget, SyncPlan } from '../types';
+import { detectConflicts } from '../detection/conflict-detector';
 
 export async function buildSyncPlan(
   client: SupabaseClient,
@@ -32,9 +33,13 @@ export async function buildSyncPlan(
     0,
   );
 
+  // Detectar conflitos: new_uuid já tem dados → update pode mesclar ou violar constraint
+  const conflicts = await detectConflicts(client, mappings, columnTargets);
+
   return {
     userMappings: mappings,
     columnTargets,
+    conflicts,
     estimatedTotalUpdates,
     warnings,
     detectedAt: new Date().toISOString(),

@@ -108,7 +108,26 @@ export function SyncPreview({ nav, plan, dispatch, onConfirm }: Props) {
           </Box>
         )}
 
-        {/* Warnings */}
+        {/* Conflicts */}
+        {plan.conflicts.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text color={theme.colors.error} bold>
+              {theme.symbols.warn}  {plan.conflicts.length} conflito(s) detectado(s) — novo usuário já tem dados
+            </Text>
+            {plan.conflicts.slice(0, 3).map((c, i) => (
+              <Text key={i} color={theme.colors.muted} dimColor>
+                {'    '}{c.email}: {c.tableName}.{c.columnName} ({c.existingRowCount} linha(s))
+              </Text>
+            ))}
+            {plan.conflicts.length > 3 && (
+              <Text color={theme.colors.muted} dimColor>
+                {'    '}… e mais {plan.conflicts.length - 3}
+              </Text>
+            )}
+          </Box>
+        )}
+
+        {/* Suspicious confidence */}
         {suspiciousCount > 0 && (
           <Box marginBottom={1}>
             <Text color={theme.colors.warning}>

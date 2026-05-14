@@ -3,6 +3,18 @@ import { buildUserSyncPlan, executeSyncPlan } from '../../index';
 
 export function useSyncOp(dispatch: React.Dispatch<SyncWizardAction>) {
   async function discover(session: SyncWizardSession): Promise<boolean> {
+    // Config validation is synchronous — check before showing loading screen
+    const { validateConfig } = await import('../../index');
+    const configResult = validateConfig({
+      oldSupabase: { url: session.oldUrl, serviceKey: session.oldKey },
+      newSupabase: { url: session.newUrl, serviceKey: session.newKey },
+      options: { dryRun: false, batchSize: 500, skipTables: [], skipColumns: [], extraColumns: [], verbose: false },
+    });
+    if (!configResult.valid) {
+      dispatch({ type: 'SET_ERROR', error: configResult.errors.join('\n\n') });
+      return false;
+    }
+
     dispatch({ type: 'SET_DISCOVERING', value: true });
     dispatch({ type: 'CLEAR_LOGS' });
 

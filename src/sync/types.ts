@@ -31,6 +31,7 @@ export interface ColumnTarget {
 export interface SyncPlan {
   userMappings: UserMapping[];
   columnTargets: ColumnTarget[];
+  conflicts: ConflictReport[];
   estimatedTotalUpdates: number;
   warnings: string[];
   detectedAt: string;
