@@ -63,6 +63,8 @@ function renderAnalysis(report: AnalysisReport): void {
   const { language, supabase, tailwind, packageJson, lovable } = report;
 
   console.log('');
+  console.log(chalk.dim(`  → O projeto original não será modificado — todos os artefatos vão para --output`));
+  console.log('');
   console.log(chalk.bold.cyan(`  ┌${'─'.repeat(W - 2)}┐`));
   console.log(chalk.bold.cyan(`  │${'  Relatório de Análise'.padEnd(W - 2)}│`));
   console.log(chalk.bold.cyan(`  └${'─'.repeat(W - 2)}┘`));
@@ -152,6 +154,46 @@ function renderAnalysis(report: AnalysisReport): void {
   }
 
   console.log('');
+}
+
+function renderNextSteps(report: AnalysisReport): void {
+  console.log('');
+  console.log(chalk.bold(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(chalk.bold(`  │${'  Próximos passos recomendados'.padEnd(W - 2)}│`));
+  console.log(chalk.bold(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  const steps: Array<{ label: string; cmd: string }> = [];
+
+  steps.push({
+    label: 'Gerar Dockerfile, GitHub Actions e plano de migração completo',
+    cmd: `lovable-migrate deploy ./${report.projectName} --output ./output`,
+  });
+
+  if (report.envVars.length > 0) {
+    steps.push({
+      label: `Configurar ${report.envVars.length} variável${report.envVars.length > 1 ? 'is' : ''} de ambiente no servidor destino`,
+      cmd: `# Template gerado em output/${report.projectName}/env/.env.example`,
+    });
+  }
+
+  if (report.supabase.detected) {
+    steps.push({
+      label: 'Provisionar instância Supabase e aplicar migrations',
+      cmd: `# Arquivos gerados em output/${report.projectName}/supabase/`,
+    });
+  }
+
+  steps.push({
+    label: 'Usar o wizard interativo (recomendado para primeiro uso)',
+    cmd: 'lovable-migrate ui',
+  });
+
+  steps.slice(0, 4).forEach((step, i) => {
+    console.log(`  ${chalk.cyan(String(i + 1) + '.')} ${chalk.white(step.label)}`);
+    console.log(`     ${chalk.dim(step.cmd)}`);
+    console.log('');
+  });
 }
 
 const RISK_COLORS: Record<RiskLevel, (s: string) => string> = {
@@ -773,6 +815,10 @@ export class TerminalRenderer implements Renderer {
       return;
     }
     renderAnalysis(ctx.analysis);
+
+    if (!ctx.plan) {
+      renderNextSteps(ctx.analysis);
+    }
 
     if (ctx.plan) {
       renderPlan(ctx.plan);

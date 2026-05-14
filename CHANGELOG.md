@@ -7,6 +7,31 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [0.3.1] — 2026-05-13
+
+### UX — Onboarding e calibração de severidade
+
+Patch focado em redução de ansiedade do primeiro uso: sem falsos bloqueadores, mensagens reassurantes e guia contextual de próximos passos.
+
+### Corrigido
+
+- **`ENV_VARS_UNRESOLVED` demovido de `critical` para `warning`** — variáveis de ambiente detectadas mas não configuradas no servidor destino são o estado *esperado* em projetos novos; o deploy não falhou e `safeToMigrate` não é mais bloqueado por isso
+
+### Melhorado
+
+- **Mensagem `ENV_VARS_UNRESOLVED` redesenhada** — de tom de erro urgente para explicação tranquilizadora: "isso é esperado em projetos novos"
+- **Reassurance line** — output terminal exibe `→ O projeto original não será modificado — todos os artefatos vão para --output` antes de cada bloco de análise
+- **Bloco "Próximos passos recomendados"** — exibido após análise quando o usuário roda apenas `analyze`; max 4 passos contextuais baseados no projeto (env vars detectadas, Supabase detectado, CTA para `deploy` e `ui`)
+
+### Testes
+
+- 278 testes (Vitest) — 19 arquivos de teste
+- `test/integration/zip-nested-root.test.ts` — 5 novos testes que garantem ausência de falsos positivos (`PACKAGE_JSON_MISSING`, `NO_ENTRY_POINT`) em ZIPs exportados do Lovable.dev com prefixo de pasta aninhado
+- `test/integration/validator.test.ts` — atualizado: `react-vite` e `supabase-project` não bloqueiam mais por env vars; asserções movem `ENV_VARS_UNRESOLVED` para `warnings`
+- `test/integration/server.test.ts` — atualizado: endpoint `/validate` corretamente retorna `safeToMigrate: true` para `react-vite`
+
+---
+
 ## [0.3.0] — 2026-05-13
 
 ### Demo-first UX + showcase visual

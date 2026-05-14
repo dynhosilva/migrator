@@ -231,15 +231,15 @@ describe('POST /validate', () => {
   beforeAll(async () => { app = await buildApp(); });
   afterAll(async ()  => { await app.close(); });
 
-  it('react-vite: safeToMigrate false por ENV_VARS_UNRESOLVED', async () => {
+  it('react-vite: safeToMigrate true — ENV_VARS_UNRESOLVED é warning, não bloqueia', async () => {
     const res  = await post(app, '/validate', { input: fixturePath('react-vite') });
     const data = (res.json<Record<string, unknown>>()).data as Record<string, unknown>;
 
     expect(res.statusCode).toBe(200);
-    expect(data.safeToMigrate).toBe(false);
-    const blocking = data.blockingIssues as Array<Record<string, unknown>>;
-    const codes = blocking.map((i) => i.code);
-    expect(codes).toContain('ENV_VARS_UNRESOLVED');
+    expect(data.safeToMigrate).toBe(true);
+    const warnings = data.warnings as Array<Record<string, unknown>>;
+    const warnCodes = warnings.map((i) => i.code);
+    expect(warnCodes).toContain('ENV_VARS_UNRESOLVED');
   });
 
   it('minimal-js: safeToMigrate false por FRAMEWORK_UNKNOWN', async () => {

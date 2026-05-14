@@ -21,14 +21,15 @@ export const envRule: ValidationRule = {
 
     const { required, missing, warnings } = plan.env;
 
-    // Conservador: todas as vars detectadas são tratadas como missing pelo planner.
-    // Crítico pois a aplicação não iniciará sem elas.
+    // Variáveis de ambiente detectadas mas ainda não configuradas no servidor destino.
+    // Isso é esperado em projetos novos — o deploy não falhou, as vars ainda precisam
+    // ser configuradas no ambiente de destino antes de iniciar a aplicação.
     if (missing.length > 0) {
       issues.push(issue(
         'ENV_VARS_UNRESOLVED',
-        'critical',
-        `${missing.length} ${missing.length === 1 ? 'variável de ambiente obrigatória' : 'variáveis de ambiente obrigatórias'} não configurada${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}`,
-        'Configure as variáveis no servidor destino antes de iniciar a aplicação. Template disponível em env/.env.example.',
+        'warning',
+        `${missing.length} ${missing.length === 1 ? 'variável de ambiente detectada' : 'variáveis de ambiente detectadas'} — ainda não configurada${missing.length === 1 ? '' : 's'} no servidor destino: ${missing.join(', ')}`,
+        'Isso é esperado em projetos novos. Configure essas variáveis no servidor antes de iniciar a aplicação. O template está em env/.env.example.',
       ));
     } else if (required.length === 0) {
       issues.push(issue(

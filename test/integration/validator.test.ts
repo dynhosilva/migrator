@@ -47,16 +47,22 @@ describe('Validator — minimal-js (framework unknown)', () => {
 });
 
 describe('Validator — react-vite (env vars não configuradas)', () => {
-  it('bloqueia por ENV_VARS_UNRESOLVED', async () => {
+  it('não bloqueia migração — ENV_VARS_UNRESOLVED é warning, não critical', async () => {
     const ctx = await runValidation('react-vite');
-    expect(ctx.validation!.safeToMigrate).toBe(false);
-    const codes = ctx.validation!.blockingIssues.map((i) => i.code);
-    expect(codes).toContain('ENV_VARS_UNRESOLVED');
+    expect(ctx.validation!.safeToMigrate).toBe(true);
+  });
+
+  it('issue ENV_VARS_UNRESOLVED aparece em warnings (não em blockingIssues)', async () => {
+    const ctx = await runValidation('react-vite');
+    const warnCodes = ctx.validation!.warnings.map((i) => i.code);
+    expect(warnCodes).toContain('ENV_VARS_UNRESOLVED');
+    const blockCodes = ctx.validation!.blockingIssues.map((i) => i.code);
+    expect(blockCodes).not.toContain('ENV_VARS_UNRESOLVED');
   });
 
   it('issue ENV_VARS_UNRESOLVED menciona as vars detectadas', async () => {
     const ctx = await runValidation('react-vite');
-    const issue = ctx.validation!.blockingIssues.find((i) => i.code === 'ENV_VARS_UNRESOLVED');
+    const issue = ctx.validation!.warnings.find((i) => i.code === 'ENV_VARS_UNRESOLVED');
     expect(issue!.message).toContain('VITE_API_URL');
     expect(issue!.message).toContain('VITE_APP_TITLE');
   });
@@ -64,14 +70,14 @@ describe('Validator — react-vite (env vars não configuradas)', () => {
   it('validate retorna summary com contagens corretas', async () => {
     const ctx = await runValidation('react-vite');
     expect(ctx.validation!.summary.rulesExecuted).toBe(7);
-    expect(ctx.validation!.summary.criticalCount).toBeGreaterThanOrEqual(1);
+    expect(ctx.validation!.summary.criticalCount).toBe(0);
   });
 });
 
 describe('Validator — supabase-project (Supabase sem vars)', () => {
-  it('bloqueia por env vars ausentes', async () => {
+  it('não bloqueia — env vars vazias geram warning, não critical', async () => {
     const ctx = await runValidation('supabase-project');
-    expect(ctx.validation!.safeToMigrate).toBe(false);
+    expect(ctx.validation!.safeToMigrate).toBe(true);
   });
 
   it('gera aviso de edge functions manuais', async () => {
