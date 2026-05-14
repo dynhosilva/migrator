@@ -141,6 +141,10 @@ export type {
 export { TerminalRenderer, JsonRenderer } from './output';
 export type { Renderer } from './output';
 
+// Sync — reconexão automática de user_ids entre projetos Supabase
+export { syncUsers } from './sync';
+export type { SyncConfig, SyncOptions, SyncResult, UserMapping, ColumnTarget, SyncPlan, UpdateRecord } from './sync';
+
 // Infraestrutura
 export { logger, setVerbose } from './logger';
 export type { MigrateOptions } from './types';

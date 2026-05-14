@@ -59,6 +59,7 @@
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",
+    "@supabase/supabase-js": "^2.105.4",
     "adm-zip": "^0.5.10",
     "chalk": "^4.1.2",
     "commander": "^12.1.0",

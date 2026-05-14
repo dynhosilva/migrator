@@ -20,9 +20,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ✅ Remote v1 | `src/remote/` | Planejamento de deploy remoto — modelagem pura, sem SSH real |
 | ✅ API Layer | `src/server/` | HTTP API via Fastify — thin layer sobre a engine, sem lógica de domínio |
 | ✅ TUI v1 | `src/tui/` | Terminal UI interativa (Ink/React) — wizard de migração end-to-end |
-| 🔲 Re-sync | `src/sync/` | Re-sincronização com Lovable / Supabase |
+| ✅ Sync v1 | `src/sync/` | Reconexão automática de user_ids entre projetos Supabase (email-matching, dry-run, rollback) |
 
-Integrações externas planejadas: **Supabase** e **Hostinger** (VPS).
+Integrações externas: **Supabase** (`src/integrations/supabase/`). **Hostinger** (VPS) — planejada.
 
 ## Commands
 

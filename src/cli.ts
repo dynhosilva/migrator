@@ -14,6 +14,8 @@ import { cicdContext }     from './cicd';
 import { startServer }     from './server';
 import { startTui }        from './tui';
 import { runDemo }         from './demo';
+import { syncUsers }       from './sync';
+import { printSyncReport } from './sync/report/sync-report';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -441,6 +443,59 @@ program
         : new TerminalRenderer();
 
       renderer.render(planned2);
+    } catch (err) {
+      logger.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('sync-users')
+  .description('Reconecta dados de usuários entre dois projetos Supabase após migração (cruza por email, atualiza todas as tabelas automaticamente)')
+  .requiredOption('--old-url <url>', 'URL do projeto Supabase antigo')
+  .requiredOption('--old-key <key>', 'Service role key do projeto antigo')
+  .requiredOption('--new-url <url>', 'URL do projeto Supabase novo')
+  .requiredOption('--new-key <key>', 'Service role key do projeto novo')
+  .option('--dry-run', 'Exibe preview sem executar alterações')
+  .option('--batch-size <n>', 'Tamanho do lote de atualizações', '500')
+  .option('--skip-tables <tables>', 'Tabelas a ignorar (separadas por vírgula)')
+  .option('--skip-columns <cols>', 'Colunas a ignorar (separadas por vírgula)')
+  .option('--extra-columns <cols>', 'Colunas adicionais a detectar além das padrão (separadas por vírgula)')
+  .option('--backup-dir <dir>', 'Diretório para salvar o backup de rollback')
+  .option('-v, --verbose', 'Habilita saída verbose')
+  .action(async (options: {
+    oldUrl: string; oldKey: string;
+    newUrl: string; newKey: string;
+    dryRun?: boolean;
+    batchSize?: string;
+    skipTables?: string;
+    skipColumns?: string;
+    extraColumns?: string;
+    backupDir?: string;
+    verbose?: boolean;
+  }) => {
+    if (options.verbose) setVerbose(true);
+
+    try {
+      const result = await syncUsers({
+        oldSupabase: { url: options.oldUrl, serviceKey: options.oldKey },
+        newSupabase: { url: options.newUrl, serviceKey: options.newKey },
+        options: {
+          dryRun: options.dryRun ?? false,
+          batchSize: parseInt(options.batchSize ?? '500', 10),
+          skipTables: options.skipTables ? options.skipTables.split(',').map(s => s.trim()) : [],
+          skipColumns: options.skipColumns ? options.skipColumns.split(',').map(s => s.trim()) : [],
+          extraColumns: options.extraColumns ? options.extraColumns.split(',').map(s => s.trim()) : [],
+          backupDir: options.backupDir,
+          verbose: options.verbose ?? false,
+        },
+      });
+
+      printSyncReport(result);
+
+      if (!result.success && !result.dryRun) {
+        process.exit(1);
+      }
     } catch (err) {
       logger.error((err as Error).message);
       process.exit(1);
