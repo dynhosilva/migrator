@@ -71,13 +71,13 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        run: npm run build:clean
 
       - name: Verify CLI binary
         run: node dist/cli.js --version
 
-      - name: npm publish dry-run
-        run: npm publish --dry-run --access public
+      - name: npm publish
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

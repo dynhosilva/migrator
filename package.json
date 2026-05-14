@@ -55,7 +55,7 @@
     "test:dist": "vitest run test/packaging/",
     "preview:html": "ts-node scripts/generate-html-preview.ts",
     "capture": "ts-node --transpile-only scripts/capture.ts",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build:clean"
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",
