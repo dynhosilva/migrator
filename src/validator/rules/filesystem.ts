@@ -25,6 +25,11 @@ const KNOWN_ENTRY_POINTS = [
   'app/layout.tsx',
 ];
 
+// ZIP exports from Lovable.dev wrap files in a top-level folder (e.g. "my-saas-app/package.json").
+// This helper matches both flat ("package.json") and nested ("project/package.json") paths.
+const hasPath = (files: { relativePath: string }[], suffix: string): boolean =>
+  files.some((f) => f.relativePath === suffix || f.relativePath.endsWith('/' + suffix));
+
 export const filesystemRule: ValidationRule = {
   key: 'filesystem',
 
@@ -44,7 +49,7 @@ export const filesystemRule: ValidationRule = {
     }
 
     // package.json é pré-requisito absoluto para qualquer projeto Node.js
-    const hasPackageJson = files.some((f) => f.relativePath === 'package.json');
+    const hasPackageJson = hasPath(files, 'package.json');
     if (!hasPackageJson) {
       issues.push(issue(
         'PACKAGE_JSON_MISSING',
@@ -56,9 +61,7 @@ export const filesystemRule: ValidationRule = {
 
     // Ponto de entrada — só verifica se o framework foi identificado
     if (analysis && analysis.framework !== 'unknown') {
-      const hasEntryPoint = KNOWN_ENTRY_POINTS.some((ep) =>
-        files.some((f) => f.relativePath === ep),
-      );
+      const hasEntryPoint = KNOWN_ENTRY_POINTS.some((ep) => hasPath(files, ep));
       if (!hasEntryPoint) {
         issues.push(issue(
           'NO_ENTRY_POINT',
