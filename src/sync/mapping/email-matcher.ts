@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserMapping } from '../types';
+import { scoreMatch, type ScoredUser } from './confidence-scorer';
 
 export interface MatchResult {
   mappings: UserMapping[];
@@ -7,15 +8,24 @@ export interface MatchResult {
   warnings: string[];
 }
 
-async function listAllUsers(client: SupabaseClient): Promise<Array<{ id: string; email?: string }>> {
-  const users: Array<{ id: string; email?: string }> = [];
+async function listAllUsers(client: SupabaseClient): Promise<ScoredUser[]> {
+  const users: ScoredUser[] = [];
   let page = 1;
   const perPage = 1000;
 
   while (true) {
     const { data, error } = await client.auth.admin.listUsers({ page, perPage });
     if (error) throw new Error(`Falha ao listar usuários: ${error.message}`);
-    users.push(...data.users.map(u => ({ id: u.id, email: u.email })));
+
+    for (const u of data.users) {
+      users.push({
+        id: u.id,
+        email: u.email,
+        createdAt: u.created_at,
+        provider: (u.app_metadata as Record<string, unknown>)?.provider as string | undefined,
+      });
+    }
+
     if (data.users.length < perPage) break;
     page++;
   }
@@ -35,7 +45,7 @@ export async function matchUsersByEmail(
   const newByEmail = new Map(
     newUsers
       .filter(u => u.email)
-      .map(u => [u.email!.toLowerCase(), u.id]),
+      .map(u => [u.email!.toLowerCase(), u]),
   );
 
   const mappings: UserMapping[] = [];
@@ -51,24 +61,27 @@ export async function matchUsersByEmail(
       continue;
     }
 
-    const newUserId = newByEmail.get(email);
+    const newUser = newByEmail.get(email);
 
-    if (!newUserId) {
+    if (!newUser) {
       warnings.push(`Sem correspondente no novo projeto para: ${email}`);
       unmatchedOldCount++;
       continue;
     }
 
-    if (oldUser.id === newUserId) {
+    if (oldUser.id === newUser.id) {
       warnings.push(`${email} já possui o mesmo UUID nos dois projetos — ignorado`);
       continue;
     }
 
+    const confidence = scoreMatch(oldUser, newUser);
+
     mappings.push({
       oldUserId: oldUser.id,
-      newUserId,
+      newUserId: newUser.id,
       email,
       matchMethod: 'email',
+      confidence,
     });
   }
 

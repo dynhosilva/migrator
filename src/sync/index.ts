@@ -7,118 +7,86 @@ import { matchUsersByEmail } from './mapping/email-matcher';
 import { buildSyncPlan } from './executor/dry-runner';
 import { executeUpdates } from './executor/batch-updater';
 import { createBackup, restoreFromBackup } from './executor/backup-manager';
+import { generateHtmlReport } from './report/html-report';
 import { logger } from '../logger';
-import type { SyncOptions, SyncResult, UpdateRecord } from './types';
+import type { SyncOptions, SyncResult, SyncPlan, UpdateRecord } from './types';
 
 export interface SyncConfig {
   oldSupabase: SupabaseConfig;
   newSupabase: SupabaseConfig;
   options: SyncOptions;
+  onProgress?: (message: string) => void;
 }
 
-const EMPTY_PLAN = (warnings: string[]) => ({
-  userMappings: [],
-  columnTargets: [],
-  estimatedTotalUpdates: 0,
-  warnings,
-  detectedAt: new Date().toISOString(),
-});
+const DEFAULT_BACKUP_DIR = path.join(os.tmpdir(), 'lovable-migrate-sync');
 
-export async function syncUsers(config: SyncConfig): Promise<SyncResult> {
-  const start = Date.now();
-  const { options } = config;
+// ─── Phase 1: discovery (used by wizard for preview) ──────────────────────────
 
+export async function buildUserSyncPlan(config: SyncConfig): Promise<SyncPlan> {
   const oldClient = createAdminClient(config.oldSupabase);
   const newClient = createAdminClient(config.newSupabase);
+  const { options } = config;
 
-  // 1. Detectar colunas user_id no schema do novo projeto
-  logger.debug('Detectando colunas de user_id no novo projeto via PostgREST...');
+  config.onProgress?.('Detectando schema do novo projeto...');
   const rawColumns = await detectUserIdColumns(
     config.newSupabase,
     options.extraColumns,
     options.skipTables,
     options.skipColumns,
   );
-  logger.debug(`${rawColumns.length} coluna(s) detectada(s)`);
 
-  // 2. Cruzar auth.users dos dois projetos por email
-  logger.debug('Buscando usuários nos dois projetos...');
+  config.onProgress?.(`${rawColumns.length} coluna(s) detectada(s). Buscando usuários...`);
   const { mappings, unmatchedOldCount, warnings } = await matchUsersByEmail(oldClient, newClient);
 
   if (unmatchedOldCount > 0) {
     warnings.push(
-      `${unmatchedOldCount} usuário(s) do projeto antigo sem correspondente no novo — não serão migrados`,
+      `${unmatchedOldCount} usuário(s) do projeto antigo sem correspondente no novo`,
     );
   }
 
-  if (mappings.length === 0) {
-    return {
-      success: false,
-      dryRun: options.dryRun,
-      plan: EMPTY_PLAN(warnings),
-      updates: [],
-      totalRowsUpdated: 0,
-      tablesUpdated: [],
-      errors: ['Nenhum mapeamento de usuário encontrado — certifique-se de que os usuários já criaram conta no novo projeto'],
-      rollbackPerformed: false,
-      durationMs: Date.now() - start,
-      executedAt: new Date().toISOString(),
-    };
-  }
+  config.onProgress?.(`${mappings.length} usuário(s) mapeado(s). Calculando registros afetados...`);
+  return buildSyncPlan(newClient, mappings, rawColumns, warnings);
+}
 
-  logger.debug(`${mappings.length} usuário(s) mapeado(s). Calculando registros afetados...`);
+// ─── Phase 2: execution (used by wizard after user confirms) ──────────────────
 
-  // 3. Contar registros afetados (sempre — dry-run ou não)
-  const plan = await buildSyncPlan(newClient, mappings, rawColumns, warnings);
-
-  if (options.dryRun) {
-    return {
-      success: true,
-      dryRun: true,
-      plan,
-      updates: [],
-      totalRowsUpdated: 0,
-      tablesUpdated: [],
-      errors: [],
-      rollbackPerformed: false,
-      durationMs: Date.now() - start,
-      executedAt: new Date().toISOString(),
-    };
-  }
-
-  // 4. Backup antes de qualquer escrita
-  const backupDir = options.backupDir ?? path.join(os.tmpdir(), 'lovable-migrate-sync');
-  let backupFile: string | undefined;
+export async function executeSyncPlan(
+  plan: SyncPlan,
+  config: SyncConfig,
+): Promise<SyncResult> {
+  const start = Date.now();
+  const newClient = createAdminClient(config.newSupabase);
+  const backupDir = config.options.backupDir ?? DEFAULT_BACKUP_DIR;
   const updates: UpdateRecord[] = [];
   const errors: string[] = [];
   let rollbackPerformed = false;
+  let backupFile: string | undefined;
+  let htmlReportFile: string | undefined;
 
   const activeColumns = plan.columnTargets.filter(c => c.estimatedRows > 0);
 
   try {
     if (activeColumns.length > 0) {
-      logger.debug('Criando backup antes de executar atualizações...');
-      backupFile = await createBackup(newClient, mappings, activeColumns, backupDir);
-      logger.debug(`Backup salvo: ${backupFile}`);
+      config.onProgress?.('Criando backup de segurança...');
+      backupFile = await createBackup(newClient, plan.userMappings, activeColumns, backupDir);
+      config.onProgress?.(`Backup salvo: ${backupFile}`);
     }
 
-    // 5. Executar UPDATEs em lote
-    logger.debug('Executando atualizações...');
+    config.onProgress?.('Executando atualizações...');
     const executed = await executeUpdates(
       newClient,
-      mappings,
+      plan.userMappings,
       plan.columnTargets,
-      options.batchSize,
-      options.verbose
-        ? (r) => logger.debug(`  ${r.tableName}.${r.columnName}: ${r.rowsAffected} linha(s)`)
-        : undefined,
+      config.options.batchSize,
+      (r) => config.onProgress?.(
+        `  ${r.tableName}.${r.columnName}: ${r.rowsAffected} linha(s)${r.error ? ` ⚠ ${r.error}` : ''}`,
+      ),
     );
     updates.push(...executed);
 
-    // 6. Rollback automático se houver erros
     const failedUpdates = executed.filter(u => !!u.error);
     if (failedUpdates.length > 0 && backupFile) {
-      logger.debug(`${failedUpdates.length} erro(s) detectado(s) — iniciando rollback...`);
+      config.onProgress?.(`${failedUpdates.length} erro(s) — iniciando rollback...`);
       await restoreFromBackup(newClient, backupFile);
       rollbackPerformed = true;
       errors.push(...failedUpdates.map(u => `${u.tableName}.${u.columnName}: ${u.error}`));
@@ -129,7 +97,7 @@ export async function syncUsers(config: SyncConfig): Promise<SyncResult> {
 
     if (backupFile) {
       try {
-        logger.debug('Erro crítico — tentando rollback...');
+        config.onProgress?.('Erro crítico — revertendo...');
         await restoreFromBackup(newClient, backupFile);
         rollbackPerformed = true;
       } catch (rollbackErr) {
@@ -144,7 +112,7 @@ export async function syncUsers(config: SyncConfig): Promise<SyncResult> {
   const tablesUpdated = [...new Set(successfulUpdates.map(u => u.tableName))];
   const totalRowsUpdated = successfulUpdates.reduce((sum, u) => sum + u.rowsAffected, 0);
 
-  return {
+  const result: SyncResult = {
     success: errors.length === 0 && !rollbackPerformed,
     dryRun: false,
     plan,
@@ -157,6 +125,65 @@ export async function syncUsers(config: SyncConfig): Promise<SyncResult> {
     durationMs: Date.now() - start,
     executedAt: new Date().toISOString(),
   };
+
+  try {
+    config.onProgress?.('Gerando relatório HTML...');
+    htmlReportFile = generateHtmlReport(result, backupDir);
+    result.htmlReportFile = htmlReportFile;
+  } catch {
+    // relatório HTML é melhor-esforço — não falha a migração
+  }
+
+  return result;
 }
 
-export type { SyncOptions, SyncResult, UserMapping, ColumnTarget, SyncPlan, UpdateRecord } from './types';
+// ─── Combined (used by sync-users CLI command) ────────────────────────────────
+
+export async function syncUsers(config: SyncConfig): Promise<SyncResult> {
+  const start = Date.now();
+
+  const plan = await buildUserSyncPlan(config).catch(err => { throw err; });
+
+  if (plan.userMappings.length === 0) {
+    return {
+      success: false,
+      dryRun: config.options.dryRun,
+      plan,
+      updates: [],
+      totalRowsUpdated: 0,
+      tablesUpdated: [],
+      errors: ['Nenhum mapeamento de usuário encontrado — os usuários precisam criar conta no novo projeto primeiro'],
+      rollbackPerformed: false,
+      durationMs: Date.now() - start,
+      executedAt: new Date().toISOString(),
+    };
+  }
+
+  if (config.options.dryRun) {
+    const dryResult: SyncResult = {
+      success: true,
+      dryRun: true,
+      plan,
+      updates: [],
+      totalRowsUpdated: 0,
+      tablesUpdated: [],
+      errors: [],
+      rollbackPerformed: false,
+      durationMs: Date.now() - start,
+      executedAt: new Date().toISOString(),
+    };
+
+    try {
+      const backupDir = config.options.backupDir ?? DEFAULT_BACKUP_DIR;
+      dryResult.htmlReportFile = generateHtmlReport(dryResult, backupDir);
+    } catch {
+      // melhor-esforço
+    }
+
+    return dryResult;
+  }
+
+  return executeSyncPlan(plan, config);
+}
+
+export type { SyncOptions, SyncResult, SyncPlan, UserMapping, ColumnTarget, UpdateRecord, ConfidenceScore, ConfidenceLevel } from './types';

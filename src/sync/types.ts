@@ -1,8 +1,25 @@
+export type ConfidenceLevel = 'high' | 'medium' | 'suspicious';
+
+export interface ConfidenceScore {
+  level: ConfidenceLevel;
+  score: number;
+  reasons: string[];
+}
+
 export interface UserMapping {
   oldUserId: string;
   newUserId: string;
   email: string;
   matchMethod: 'email' | 'manual';
+  confidence: ConfidenceScore;
+}
+
+export interface ConflictReport {
+  email: string;
+  newUserId: string;
+  tableName: string;
+  columnName: string;
+  existingRowCount: number;
 }
 
 export interface ColumnTarget {
@@ -46,6 +63,7 @@ export interface SyncResult {
   errors: string[];
   rollbackPerformed: boolean;
   backupFile?: string;
+  htmlReportFile?: string;
   durationMs: number;
   executedAt: string;
 }

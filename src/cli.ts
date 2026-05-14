@@ -16,6 +16,7 @@ import { startTui }        from './tui';
 import { runDemo }         from './demo';
 import { syncUsers }       from './sync';
 import { printSyncReport } from './sync/report/sync-report';
+import { startSyncWizard } from './sync/tui';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -500,6 +501,13 @@ program
       logger.error((err as Error).message);
       process.exit(1);
     }
+  });
+
+program
+  .command('sync-ui')
+  .description('Wizard interativo para reconexão automática de dados entre projetos Supabase')
+  .action(() => {
+    startSyncWizard();
   });
 
 program
