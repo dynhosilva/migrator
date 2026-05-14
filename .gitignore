@@ -15,3 +15,12 @@ dist/
 
 # strat-forge-pro tem seu próprio .git — não tratar como submodule
 examples/strat-forge-pro/
+
+# Artefatos runtime do sync-users (backup, checkpoint, relatório HTML)
+# Padrão: vão para os.tmpdir() — estas entradas protegem backupDir customizados
+sync-backup-*.json
+sync-backup-*.json.tmp
+sync-checkpoint-*.json
+sync-checkpoint-*.json.tmp
+sync-report-*.html
+lovable-migrate-sync/
