@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserMapping } from '../types';
 import { scoreMatch, type ScoredUser } from './confidence-scorer';
+import { withTimeout, DEFAULT_TIMEOUTS } from '../utils/timeout';
+import { withRetry, DEFAULT_RETRY, type RetryOptions } from '../utils/retry';
 
 export interface MatchResult {
   mappings: UserMapping[];
@@ -8,25 +10,65 @@ export interface MatchResult {
   warnings: string[];
 }
 
-async function listAllUsers(client: SupabaseClient): Promise<ScoredUser[]> {
+export interface ListUsersOptions {
+  timeoutMs?: number;
+  retry?: RetryOptions;
+}
+
+async function listAllUsers(client: SupabaseClient, opts: ListUsersOptions = {}): Promise<ScoredUser[]> {
   const users: ScoredUser[] = [];
   let page = 1;
   const perPage = 1000;
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUTS.userListPage;
+  const retry = opts.retry ?? DEFAULT_RETRY;
 
   while (true) {
-    const { data, error } = await client.auth.admin.listUsers({ page, perPage });
-    if (error) throw new Error(`Falha ao listar usuários: ${error.message}`);
+    let pageData: { users: Array<{ id: string; email?: string; created_at: string; app_metadata: Record<string, unknown> }> };
 
-    for (const u of data.users) {
+    try {
+      const result = await withRetry(
+        () => withTimeout(
+          client.auth.admin.listUsers({ page, perPage }),
+          timeoutMs,
+          `listUsers page ${page}`,
+        ),
+        retry,
+        `listUsers page ${page}`,
+      );
+
+      if (result.error) {
+        if (page === 1) {
+          throw new Error(`Falha ao listar usuários: ${result.error.message}`);
+        }
+        // Mid-pagination failure: warn and return what we have so the caller knows
+        // the list is potentially incomplete rather than silently truncating it
+        process.stderr.write(
+          `[sync] Aviso: falha ao buscar página ${page} de usuários — ` +
+          `${users.length} usuário(s) coletados. Detalhe: ${result.error.message}\n`,
+        );
+        break;
+      }
+
+      pageData = result.data as typeof pageData;
+    } catch (err) {
+      if (page === 1) throw err;
+      process.stderr.write(
+        `[sync] Aviso: erro na página ${page} — ${users.length} usuário(s) retornados. ` +
+        `Detalhe: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+      break;
+    }
+
+    for (const u of pageData.users) {
       users.push({
         id: u.id,
         email: u.email,
         createdAt: u.created_at,
-        provider: (u.app_metadata as Record<string, unknown>)?.provider as string | undefined,
+        provider: u.app_metadata?.provider as string | undefined,
       });
     }
 
-    if (data.users.length < perPage) break;
+    if (pageData.users.length < perPage) break;
     page++;
   }
 
@@ -36,10 +78,11 @@ async function listAllUsers(client: SupabaseClient): Promise<ScoredUser[]> {
 export async function matchUsersByEmail(
   oldClient: SupabaseClient,
   newClient: SupabaseClient,
+  opts: ListUsersOptions = {},
 ): Promise<MatchResult> {
   const [oldUsers, newUsers] = await Promise.all([
-    listAllUsers(oldClient),
-    listAllUsers(newClient),
+    listAllUsers(oldClient, opts),
+    listAllUsers(newClient, opts),
   ]);
 
   const newByEmail = new Map(
@@ -56,7 +99,6 @@ export async function matchUsersByEmail(
     const email = oldUser.email?.toLowerCase();
 
     if (!email) {
-      warnings.push(`Usuário ${oldUser.id} sem email — ignorado`);
       unmatchedOldCount++;
       continue;
     }

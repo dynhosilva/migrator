@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SyncConfig } from '../index';
+import { withTimeout, DEFAULT_TIMEOUTS, SyncTimeoutError } from '../utils/timeout';
+import { withRetry, DEFAULT_RETRY } from '../utils/retry';
 
 export interface ConfigValidationResult {
   valid: boolean;
@@ -29,7 +31,6 @@ export function validateSyncConfig(config: SyncConfig): ConfigValidationResult {
   const oldUrl = config.oldSupabase.url.replace(/\/$/, '');
   const newUrl = config.newSupabase.url.replace(/\/$/, '');
 
-  // URL format
   if (!SUPABASE_URL_RE.test(oldUrl)) {
     errors.push(
       `URL do projeto ANTIGO inválida: "${config.oldSupabase.url}"\n` +
@@ -43,7 +44,6 @@ export function validateSyncConfig(config: SyncConfig): ConfigValidationResult {
     );
   }
 
-  // Same project
   if (oldUrl && newUrl && oldUrl === newUrl) {
     errors.push(
       'Os dois projetos são os mesmos (mesma URL).\n' +
@@ -51,7 +51,6 @@ export function validateSyncConfig(config: SyncConfig): ConfigValidationResult {
     );
   }
 
-  // JWT structure
   if (!JWT_STRUCTURE_RE.test(config.oldSupabase.serviceKey)) {
     errors.push(
       'Service Role Key do projeto ANTIGO inválida.\n' +
@@ -88,21 +87,39 @@ export function validateSyncConfig(config: SyncConfig): ConfigValidationResult {
 export async function validateCredentials(
   client: SupabaseClient,
   label: string,
+  timeoutMs: number = DEFAULT_TIMEOUTS.credentialCheck,
 ): Promise<string | null> {
   try {
-    const { error } = await client.auth.admin.listUsers({ page: 1, perPage: 1 });
+    const { error } = await withRetry(
+      () => withTimeout(
+        client.auth.admin.listUsers({ page: 1, perPage: 1 }),
+        timeoutMs,
+        `credencial ${label}`,
+      ),
+      { ...DEFAULT_RETRY, maxAttempts: 2 },
+      `credencial ${label}`,
+    );
+
     if (!error) return null;
 
     if (error.status === 401 || error.status === 403) {
       return (
         `Credenciais do projeto ${label} inválidas ou sem permissão.\n` +
-        '  Verifique se você está usando a Service Role Key (não a anon key).'
+        '  Verifique se você está usando a Service Role Key (não a anon key).\n' +
+        '  Supabase Dashboard → Project Settings → API → service_role.'
       );
     }
     return `Erro ao conectar no projeto ${label}: ${error.message}`;
   } catch (err) {
+    if (err instanceof SyncTimeoutError) {
+      return (
+        `Tempo limite ao conectar no projeto ${label} (${Math.round(timeoutMs / 1000)}s).\n` +
+        '  Verifique se a URL está correta e se há conexão com a internet.'
+      );
+    }
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('fetch') || msg.includes('ENOTFOUND') || msg.includes('network')) {
+    const isNetwork = msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') || msg.includes('fetch');
+    if (isNetwork) {
       return (
         `Não foi possível conectar ao projeto ${label}.\n` +
         '  Verifique a URL e a conexão com a internet.'

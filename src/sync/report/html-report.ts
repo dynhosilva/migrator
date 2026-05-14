@@ -2,28 +2,46 @@ import fs from 'fs';
 import path from 'path';
 import type { SyncResult } from '../types';
 
+const USER_ROW_LIMIT = 500;
 const LEVEL_BADGE: Record<string, string> = {
-  high: '<span style="color:#22c55e">● ALTA</span>',
-  medium: '<span style="color:#f59e0b">◐ MÉDIA</span>',
-  suspicious: '<span style="color:#ef4444">⚠ SUSPEITA</span>',
+  high: '<span style="color:#22c55e">&#9679; ALTA</span>',
+  medium: '<span style="color:#f59e0b">&#9680; M&#201;DIA</span>',
+  suspicious: '<span style="color:#ef4444">&#9888; SUSPEITA</span>',
 };
 
+// Complete HTML escaping including quotes — prevents injection in attribute values
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export function generateHtmlReport(result: SyncResult, outputDir: string): string {
   const id = `sync-${Date.now()}`;
   const { plan } = result;
 
-  const userRows = plan.userMappings.map(m => `
+  // Cap user rows to prevent multi-MB HTML files for large migrations
+  const visibleMappings = plan.userMappings.slice(0, USER_ROW_LIMIT);
+  const truncated = plan.userMappings.length > USER_ROW_LIMIT;
+
+  const userRows = visibleMappings.map(m => `
     <tr>
       <td>${escapeHtml(m.email)}</td>
       <td class="mono">${escapeHtml(m.oldUserId)}</td>
       <td class="mono">${escapeHtml(m.newUserId)}</td>
-      <td>${LEVEL_BADGE[m.confidence.level] ?? m.confidence.level}</td>
+      <td>${LEVEL_BADGE[m.confidence.level] ?? escapeHtml(m.confidence.level)}</td>
       <td>${m.confidence.score}</td>
     </tr>`).join('');
+
+  const truncationNote = truncated
+    ? `<tr><td colspan="5" style="color:#f59e0b;text-align:center">
+        &#9888; Exibindo ${USER_ROW_LIMIT} de ${plan.userMappings.length} usuários.
+        O backup contém todos os registros.
+      </td></tr>`
+    : '';
 
   const tableRows = plan.columnTargets.map(c => {
     const updated = result.updates
@@ -40,21 +58,25 @@ export function generateHtmlReport(result: SyncResult, outputDir: string): strin
 
   const errorsSection = result.errors.length > 0 ? `
     <section>
-      <h2>Erros</h2>
+      <h2>Erros (${result.errors.length})</h2>
       <ul class="errors">${result.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
     </section>` : '';
 
   const rollbackSection = result.rollbackPerformed ? `
     <div class="alert alert-warning">
-      ⚠ Rollback executado automaticamente após erros. Dados restaurados a partir do backup.
+      &#9888; Rollback executado automaticamente ap&#243;s erros. Dados restaurados a partir do backup.
     </div>` : '';
+
+  const backupNote = result.backupFile
+    ? `&nbsp;&#183;&nbsp; Backup: <code style="font-size:0.75rem;color:#64748b">${escapeHtml(result.backupFile)}</code>`
+    : '';
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Relatório de Migração — lovable-migrate</title>
+<title>Relat&#243;rio de Migra&#231;&#227;o &mdash; lovable-migrate</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
@@ -72,7 +94,6 @@ export function generateHtmlReport(result: SyncResult, outputDir: string): strin
   td { padding: 0.625rem 1rem; border-top: 1px solid #0f172a; font-size: 0.875rem; }
   tr:hover td { background: #263244; }
   .mono { font-family: monospace; font-size: 0.75rem; color: #94a3b8; }
-  .badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
   .alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin: 1rem 0; }
   .alert-warning { background: #451a03; border: 1px solid #92400e; color: #fbbf24; }
   .errors li { color: #f87171; margin: 0.25rem 0 0 1.25rem; font-family: monospace; font-size: 0.875rem; }
@@ -83,21 +104,21 @@ export function generateHtmlReport(result: SyncResult, outputDir: string): strin
 </head>
 <body>
 <div class="container">
-  <h1>Relatório de Migração</h1>
+  <h1>Relat&#243;rio de Migra&#231;&#227;o</h1>
   <div class="meta">
-    ID: ${id} &nbsp;·&nbsp;
-    ${result.dryRun ? '<strong>DRY RUN</strong> &nbsp;·&nbsp;' : ''}
-    ${escapeHtml(result.executedAt)} &nbsp;·&nbsp;
+    ID: ${escapeHtml(id)} &nbsp;&middot;&nbsp;
+    ${result.dryRun ? '<strong>DRY RUN</strong> &nbsp;&middot;&nbsp;' : ''}
+    ${escapeHtml(result.executedAt)} &nbsp;&middot;&nbsp;
     ${(result.durationMs / 1000).toFixed(1)}s
-    ${result.backupFile ? `&nbsp;·&nbsp; Backup: <code style="font-size:0.75rem;color:#64748b">${escapeHtml(result.backupFile)}</code>` : ''}
+    ${backupNote}
   </div>
 
-  ${result.dryRun ? '<div class="dry-run-banner">🔍 Este é um relatório de DRY RUN — nenhuma alteração foi executada.</div>' : ''}
+  ${result.dryRun ? '<div class="dry-run-banner">Este &#233; um relat&#243;rio de DRY RUN &mdash; nenhuma altera&#231;&#227;o foi executada.</div>' : ''}
   ${rollbackSection}
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-label">Usuários mapeados</div>
+      <div class="stat-label">Usu&#225;rios mapeados</div>
       <div class="stat-value">${plan.userMappings.length}</div>
     </div>
     <div class="stat">
@@ -115,10 +136,13 @@ export function generateHtmlReport(result: SyncResult, outputDir: string): strin
   </div>
 
   <section>
-    <h2>Usuários (${plan.userMappings.length})</h2>
+    <h2>Usu&#225;rios (${plan.userMappings.length})</h2>
     <table>
-      <thead><tr><th>Email</th><th>UUID antigo</th><th>UUID novo</th><th>Confiança</th><th>Score</th></tr></thead>
-      <tbody>${userRows || '<tr><td colspan="5" style="color:#64748b">Nenhum mapeamento</td></tr>'}</tbody>
+      <thead><tr><th>Email</th><th>UUID antigo</th><th>UUID novo</th><th>Confian&#231;a</th><th>Score</th></tr></thead>
+      <tbody>
+        ${userRows || '<tr><td colspan="5" style="color:#64748b">Nenhum mapeamento</td></tr>'}
+        ${truncationNote}
+      </tbody>
     </table>
   </section>
 
@@ -141,8 +165,8 @@ export function generateHtmlReport(result: SyncResult, outputDir: string): strin
   </section>` : ''}
 
   <div class="footer">
-    Gerado por <strong>lovable-migrate</strong> &nbsp;·&nbsp;
-    ${result.dryRun ? 'Dry Run' : result.success ? 'Migração concluída com sucesso' : 'Migração com erros'}
+    Gerado por <strong>lovable-migrate</strong> &nbsp;&middot;&nbsp;
+    ${result.dryRun ? 'Dry Run' : result.success ? 'Migra&#231;&#227;o conclu&#237;da com sucesso' : 'Migra&#231;&#227;o com erros'}
   </div>
 </div>
 </body>
@@ -150,6 +174,15 @@ export function generateHtmlReport(result: SyncResult, outputDir: string): strin
 
   fs.mkdirSync(outputDir, { recursive: true });
   const reportFile = path.join(outputDir, `${id}.html`);
-  fs.writeFileSync(reportFile, html, 'utf-8');
+  const tmpFile = `${reportFile}.tmp`;
+
+  try {
+    fs.writeFileSync(tmpFile, html, 'utf-8');
+    fs.renameSync(tmpFile, reportFile);
+  } catch (err) {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+    throw err;
+  }
+
   return reportFile;
 }

@@ -1,8 +1,14 @@
 import type { SupabaseConfig, OpenApiSpec } from './types';
+import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../sync/utils/timeout';
+import { withRetry, DEFAULT_RETRY } from '../../sync/utils/retry';
 
 export interface ColumnTarget {
   tableName: string;
   columnName: string;
+}
+
+export interface FetchSchemaOptions {
+  timeoutMs?: number;
 }
 
 const DEFAULT_USER_ID_COLUMNS = new Set([
@@ -18,16 +24,32 @@ const DEFAULT_USER_ID_COLUMNS = new Set([
   'subscriber_id',
 ]);
 
-export async function fetchOpenApiSpec(config: SupabaseConfig): Promise<OpenApiSpec> {
-  const response = await fetch(`${config.url}/rest/v1/`, {
-    headers: {
-      apikey: config.serviceKey,
-      Authorization: `Bearer ${config.serviceKey}`,
-    },
-  });
+export async function fetchOpenApiSpec(
+  config: SupabaseConfig,
+  opts: FetchSchemaOptions = {},
+): Promise<OpenApiSpec> {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUTS.schemaFetch;
+  const url = `${config.url}/rest/v1/`;
+
+  const response = await withRetry(
+    () => fetchWithTimeout(url, {
+      headers: {
+        // Keys are in request headers — never logged by this module
+        apikey: config.serviceKey,
+        Authorization: `Bearer ${config.serviceKey}`,
+      },
+    }, timeoutMs),
+    DEFAULT_RETRY,
+    'fetchOpenApiSpec',
+  );
+
   if (!response.ok) {
-    throw new Error(`Falha ao buscar schema do PostgREST: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Falha ao buscar schema do projeto (${response.status} ${response.statusText}).\n` +
+      `  Verifique se a URL e a chave do projeto estão corretas.`,
+    );
   }
+
   return response.json() as Promise<OpenApiSpec>;
 }
 

@@ -77,4 +77,8 @@ export interface SyncOptions {
   extraColumns: string[];
   verbose: boolean;
   backupDir?: string;
+  timeout?: number;      // ms per network operation — default 30 000
+  maxRetries?: number;   // retries on transient errors — default 3
+  concurrency?: number;  // parallel updates in flight — default 10
+  resumeFrom?: string;   // checkpoint file path for resumable execution
 }
