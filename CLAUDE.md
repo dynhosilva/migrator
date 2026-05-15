@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Idioma obrigatório
+
+**SEMPRE** responder ao usuário em português do Brasil — sem exceções, independente do idioma da pergunta ou do contexto técnico. Código, variáveis, funções e comandos de terminal permanecem em inglês.
+
 ## Visão do projeto
 
 `lovable-migrate` é uma **engine de migração** para projetos exportados do [Lovable.dev](https://lovable.dev). Automatiza análise, planejamento, validação, geração de artefatos Docker, execução local e planejamento de deploy remoto. O projeto original nunca é modificado — tudo vai para `outputDir`.

@@ -8,7 +8,8 @@
       "Bash(Get-ChildItem -Path \"D:\\\\lovable-migrate\" -Recurse -Directory)",
       "Bash(Select-Object FullName)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "Bash(git push *)"
     ]
   }
 }

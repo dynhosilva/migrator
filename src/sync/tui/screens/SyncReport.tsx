@@ -96,6 +96,27 @@ export function SyncReport({ result }: Props) {
         )}
       </Box>
 
+      {/* Post-migration checklist — shown only after a real successful sync */}
+      {!result.dryRun && result.success && (
+        <Box flexDirection="column" marginLeft={2} marginTop={1}>
+          <Text color={theme.colors.primary} bold>Próximos passos — valide sua migração:</Text>
+          <Box flexDirection="column" marginTop={1}>
+            <Text color={theme.colors.muted}>  {theme.symbols.dot}  Teste o login com um usuário migrado</Text>
+            <Text color={theme.colors.muted}>  {theme.symbols.dot}  Verifique os dados do usuário (perfil, histórico, registros)</Text>
+            <Text color={theme.colors.muted}>  {theme.symbols.dot}  Confirme as variáveis de ambiente no novo projeto Supabase</Text>
+            <Text color={theme.colors.muted}>  {theme.symbols.dot}  Teste as Edge Functions (se houver)</Text>
+            <Text color={theme.colors.muted}>  {theme.symbols.dot}  Faça deploy da aplicação apontando para o novo Supabase</Text>
+          </Box>
+          {result.backupFile && (
+            <Box marginTop={1}>
+              <Text color={theme.colors.muted} dimColor>
+                Em caso de problema: backup salvo em {result.backupFile}
+              </Text>
+            </Box>
+          )}
+        </Box>
+      )}
+
       <Box marginLeft={2} marginTop={2}>
         <Text color={theme.colors.muted}>Enter / Esc: sair</Text>
       </Box>
