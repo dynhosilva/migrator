@@ -53,6 +53,8 @@
     "test:watch": "vitest",
     "test:snapshots": "vitest run -u",
     "test:dist": "vitest run test/packaging/",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:e2e:watch": "vitest --config vitest.e2e.config.ts",
     "preview:html": "ts-node scripts/generate-html-preview.ts",
     "capture": "ts-node --transpile-only scripts/capture.ts",
     "prepublishOnly": "npm run typecheck && npm test && npm run build:clean"
