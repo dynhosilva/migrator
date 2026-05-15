@@ -8,13 +8,6 @@ import type { SyncWizardAction, SyncWizardSession } from '../state/types';
 
 type Field = 0 | 1 | 2 | 3;
 
-const FIELDS: { label: string; key: keyof Pick<SyncWizardSession, 'oldUrl' | 'oldKey' | 'newUrl' | 'newKey'>; placeholder: string }[] = [
-  { label: 'URL do projeto ANTIGO', key: 'oldUrl', placeholder: 'https://abc.supabase.co' },
-  { label: 'Service Role Key do projeto ANTIGO', key: 'oldKey', placeholder: 'eyJ...' },
-  { label: 'URL do projeto NOVO', key: 'newUrl', placeholder: 'https://xyz.supabase.co' },
-  { label: 'Service Role Key do projeto NOVO', key: 'newKey', placeholder: 'eyJ...' },
-];
-
 interface Props {
   nav: SyncNavigation;
   session: SyncWizardSession;
@@ -22,35 +15,51 @@ interface Props {
   onSubmit: () => void;
 }
 
-const ACTION_MAP = {
-  oldUrl: 'SET_OLD_URL',
-  oldKey: 'SET_OLD_KEY',
-  newUrl: 'SET_NEW_URL',
-  newKey: 'SET_NEW_KEY',
-} as const;
-
 export function SyncConnect({ nav, session, dispatch, onSubmit }: Props) {
   const [active, setActive] = useState<Field>(0);
+  const mode = session.oldAuthMode;
 
-  const allFilled =
-    session.oldUrl.trim() &&
-    session.oldKey.trim() &&
-    session.newUrl.trim() &&
-    session.newKey.trim();
+  const isJsonExport = mode === 'json-export';
 
-  useInput((_input, key) => {
-    if (key.escape) nav.goTo('sync-welcome');
-    if (key.tab) setActive(prev => ((prev + 1) % 4) as Field);
-    if (key.return && active < 3) setActive(prev => ((prev + 1) % 4) as Field);
-    if (key.return && active === 3 && allFilled) onSubmit();
+  const field1Label = isJsonExport
+    ? 'Arquivo export JSON (caminho ou URL)'
+    : 'Service Role Key do projeto ANTIGO';
+
+  const field1Placeholder = isJsonExport
+    ? './auth-users.json'
+    : 'eyJ...';
+
+  const field1Value = isJsonExport ? session.oldAuthExport : session.oldKey;
+
+  const allFilled = isJsonExport
+    ? !!(session.oldAuthExport.trim() && session.newUrl.trim() && session.newKey.trim())
+    : !!(session.oldUrl.trim() && session.oldKey.trim() && session.newUrl.trim() && session.newKey.trim());
+
+  useInput((input, key) => {
+    if (key.escape) { nav.goTo('sync-welcome'); return; }
+    if (input === 'm' || input === 'M') {
+      dispatch({
+        type: 'SET_OLD_AUTH_MODE',
+        value: isJsonExport ? 'service-key' : 'json-export',
+      });
+      return;
+    }
+    if (key.tab) { setActive(prev => ((prev + 1) % 4) as Field); return; }
+    if (key.return && active < 3) { setActive(prev => ((prev + 1) % 4) as Field); return; }
+    if (key.return && active === 3 && allFilled) { onSubmit(); return; }
   });
 
-  const values: Record<string, string> = {
-    oldUrl: session.oldUrl,
-    oldKey: session.oldKey,
-    newUrl: session.newUrl,
-    newKey: session.newKey,
-  };
+  function handleField1Change(v: string) {
+    if (isJsonExport) {
+      dispatch({ type: 'SET_OLD_AUTH_EXPORT', value: v });
+    } else {
+      dispatch({ type: 'SET_OLD_KEY', value: v });
+    }
+  }
+
+  const modeIndicator = isJsonExport
+    ? '○ service_role  ● JSON export  [M: alternar]'
+    : '● service_role  ○ JSON export  [M: alternar]';
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -60,22 +69,23 @@ export function SyncConnect({ nav, session, dispatch, onSubmit }: Props) {
         <Box flexDirection="column" marginBottom={1}>
           <Text color={theme.colors.primary} bold>Projeto ANTIGO</Text>
           <Text color={theme.colors.muted} dimColor>(onde estão os dados existentes)</Text>
+          <Text color={theme.colors.muted}>{modeIndicator}</Text>
         </Box>
 
         <TextInput
-          label={FIELDS[0].label}
-          value={values.oldUrl}
-          onChange={(v) => dispatch({ type: ACTION_MAP.oldUrl, value: v })}
+          label="URL do projeto ANTIGO"
+          value={session.oldUrl}
+          onChange={(v) => dispatch({ type: 'SET_OLD_URL', value: v })}
           onSubmit={() => setActive(1)}
-          placeholder={FIELDS[0].placeholder}
+          placeholder="https://abc.supabase.co"
           active={active === 0}
         />
         <TextInput
-          label={FIELDS[1].label}
-          value={values.oldKey}
-          onChange={(v) => dispatch({ type: ACTION_MAP.oldKey, value: v })}
+          label={field1Label}
+          value={field1Value}
+          onChange={handleField1Change}
           onSubmit={() => setActive(2)}
-          placeholder={FIELDS[1].placeholder}
+          placeholder={field1Placeholder}
           active={active === 1}
         />
 
@@ -85,27 +95,27 @@ export function SyncConnect({ nav, session, dispatch, onSubmit }: Props) {
         </Box>
 
         <TextInput
-          label={FIELDS[2].label}
-          value={values.newUrl}
-          onChange={(v) => dispatch({ type: ACTION_MAP.newUrl, value: v })}
+          label="URL do projeto NOVO"
+          value={session.newUrl}
+          onChange={(v) => dispatch({ type: 'SET_NEW_URL', value: v })}
           onSubmit={() => setActive(3)}
-          placeholder={FIELDS[2].placeholder}
+          placeholder="https://xyz.supabase.co"
           active={active === 2}
         />
         <TextInput
-          label={FIELDS[3].label}
-          value={values.newKey}
-          onChange={(v) => dispatch({ type: ACTION_MAP.newKey, value: v })}
+          label="Service Role Key do projeto NOVO"
+          value={session.newKey}
+          onChange={(v) => dispatch({ type: 'SET_NEW_KEY', value: v })}
           onSubmit={() => allFilled && onSubmit()}
-          placeholder={FIELDS[3].placeholder}
+          placeholder="eyJ..."
           active={active === 3}
         />
       </Box>
 
       <Box marginLeft={2} marginTop={2}>
         {allFilled
-          ? <Text color={theme.colors.muted}>Tab: próximo campo  ·  Enter: continuar  ·  Esc: voltar</Text>
-          : <Text color={theme.colors.muted}>Tab: próximo campo  ·  Esc: voltar</Text>
+          ? <Text color={theme.colors.muted}>Tab: próximo campo  ·  Enter: continuar  ·  M: alternar modo  ·  Esc: voltar</Text>
+          : <Text color={theme.colors.muted}>Tab: próximo campo  ·  M: alternar modo  ·  Esc: voltar</Text>
         }
       </Box>
     </Box>

@@ -34,9 +34,12 @@ export function SyncWelcome({ nav }: Props) {
           <Text color={theme.colors.muted}>{theme.symbols.check} Gera relatório HTML detalhado</Text>
         </Box>
 
-        <Box marginTop={1}>
-          <Text color={theme.colors.warning}>{theme.symbols.warn}  Necessário: </Text>
-          <Text color={theme.colors.muted}>Service Role Key dos dois projetos Supabase</Text>
+        <Box flexDirection="column" marginTop={1}>
+          <Text color={theme.colors.warning}>{theme.symbols.warn}  Necessário:</Text>
+          <Box marginLeft={2} flexDirection="column">
+            <Text color={theme.colors.muted}>{theme.symbols.check} Service Role Key do projeto NOVO</Text>
+            <Text color={theme.colors.muted}>○ Service Role Key do projeto ANTIGO  OU  arquivo export JSON dos usuários</Text>
+          </Box>
         </Box>
       </Box>
 

@@ -3,7 +3,7 @@ import path from 'path';
 import { createAdminClient } from '../integrations/supabase/admin-client';
 import type { SupabaseConfig } from '../integrations/supabase/types';
 import { detectUserIdColumns } from './detection/user-id-detector';
-import { matchUsersByEmail } from './mapping/email-matcher';
+import { matchUsersByEmail, matchUsersByEmailFromExport } from './mapping/email-matcher';
 import { buildSyncPlan } from './executor/dry-runner';
 import { executeUpdates } from './executor/batch-updater';
 import { createBackup, restoreFromBackup } from './executor/backup-manager';
@@ -13,13 +13,28 @@ import { generateHtmlReport } from './report/html-report';
 import { sanitizeMessage } from './utils/mask';
 import { DEFAULT_RETRY } from './utils/retry';
 import { DEFAULT_TIMEOUTS } from './utils/timeout';
+import { loadAuthExportFromFile, loadAuthExportFromUrl, type OldProjectSource } from './auth-source';
 import type { SyncOptions, SyncResult, SyncPlan, UpdateRecord } from './types';
 
 export interface SyncConfig {
-  oldSupabase: SupabaseConfig;
+  oldSupabase?: SupabaseConfig;    // used when oldSource is absent or kind='service-key'
+  oldSource?: OldProjectSource;    // explicit source for old project users
   newSupabase: SupabaseConfig;
   options: SyncOptions;
   onProgress?: (message: string) => void;
+}
+
+function resolveOldSource(config: SyncConfig): OldProjectSource {
+  if (config.oldSource) {
+    return config.oldSource;
+  }
+  if (config.oldSupabase) {
+    return { kind: 'service-key', url: config.oldSupabase.url, serviceKey: config.oldSupabase.serviceKey };
+  }
+  throw new Error(
+    'Configuração da fonte do projeto ANTIGO ausente.\n' +
+    '  Forneça --old-key ou --old-auth-export.',
+  );
 }
 
 const DEFAULT_BACKUP_DIR = path.join(os.tmpdir(), 'lovable-migrate-sync');
@@ -49,23 +64,11 @@ export async function buildUserSyncPlan(config: SyncConfig): Promise<SyncPlan> {
     throw new Error(sanitizeMessage(configResult.errors.join('\n\n')));
   }
 
-  const oldClient = createAdminClient(config.oldSupabase);
+  const resolvedSource = resolveOldSource(config);
   const newClient = createAdminClient(config.newSupabase);
   const { options } = config;
   const timeoutMs = makeTimeoutMs(options);
   const retry = makeRetryOpts(options);
-
-  // Credential validation in parallel — both projects at once
-  config.onProgress?.('Verificando credenciais...');
-  const [oldCredsError, newCredsError] = await Promise.all([
-    validateCredentials(oldClient, 'ANTIGO', options.timeout ?? DEFAULT_TIMEOUTS.credentialCheck),
-    validateCredentials(newClient, 'NOVO', options.timeout ?? DEFAULT_TIMEOUTS.credentialCheck),
-  ]);
-
-  const credErrors: string[] = [];
-  if (oldCredsError) credErrors.push(sanitizeMessage(oldCredsError));
-  if (newCredsError) credErrors.push(sanitizeMessage(newCredsError));
-  if (credErrors.length > 0) throw new Error(credErrors.join('\n\n'));
 
   // Schema detection
   config.onProgress?.('Detectando schema do novo projeto...');
@@ -77,13 +80,58 @@ export async function buildUserSyncPlan(config: SyncConfig): Promise<SyncPlan> {
   );
   config.onProgress?.(`${rawColumns.length} coluna(s) detectada(s)`);
 
-  // User matching — fetch both user lists in parallel (already done in matchUsersByEmail)
-  config.onProgress?.('Buscando usuários nos dois projetos...');
-  const { mappings, unmatchedOldCount, warnings } = await matchUsersByEmail(
-    oldClient,
-    newClient,
-    { timeoutMs: options.timeout ?? DEFAULT_TIMEOUTS.userListPage, retry },
-  );
+  let matchResult: Awaited<ReturnType<typeof matchUsersByEmail>>;
+
+  if (resolvedSource.kind === 'service-key') {
+    const oldClient = createAdminClient({ url: resolvedSource.url, serviceKey: resolvedSource.serviceKey });
+
+    // Credential validation in parallel — both projects at once
+    config.onProgress?.('Verificando credenciais...');
+    const [oldCredsError, newCredsError] = await Promise.all([
+      validateCredentials(oldClient, 'ANTIGO', options.timeout ?? DEFAULT_TIMEOUTS.credentialCheck),
+      validateCredentials(newClient, 'NOVO', options.timeout ?? DEFAULT_TIMEOUTS.credentialCheck),
+    ]);
+
+    const credErrors: string[] = [];
+    if (oldCredsError) credErrors.push(sanitizeMessage(oldCredsError));
+    if (newCredsError) credErrors.push(sanitizeMessage(newCredsError));
+    if (credErrors.length > 0) throw new Error(credErrors.join('\n\n'));
+
+    // User matching — fetch both user lists in parallel
+    config.onProgress?.('Buscando usuários nos dois projetos...');
+    matchResult = await matchUsersByEmail(
+      oldClient,
+      newClient,
+      { timeoutMs: options.timeout ?? DEFAULT_TIMEOUTS.userListPage, retry },
+    );
+  } else {
+    // JSON export path — validate NEW credentials only
+    config.onProgress?.('Verificando credenciais do projeto NOVO...');
+    const newCredsError = await validateCredentials(newClient, 'NOVO', options.timeout ?? DEFAULT_TIMEOUTS.credentialCheck);
+    if (newCredsError) throw new Error(sanitizeMessage(newCredsError));
+
+    // Load old users from file or URL
+    config.onProgress?.('Carregando usuários do export JSON...');
+    let authExport: Awaited<ReturnType<typeof loadAuthExportFromFile>>;
+    if (resolvedSource.kind === 'json-file') {
+      authExport = loadAuthExportFromFile(resolvedSource.filePath);
+    } else {
+      authExport = await loadAuthExportFromUrl(
+        resolvedSource.exportUrl,
+        options.timeout ?? DEFAULT_TIMEOUTS.userListPage,
+      );
+    }
+    config.onProgress?.(`${authExport.users.length} usuário(s) carregado(s) do export`);
+
+    config.onProgress?.('Buscando usuários do projeto NOVO...');
+    matchResult = await matchUsersByEmailFromExport(
+      authExport.users,
+      newClient,
+      { timeoutMs: options.timeout ?? DEFAULT_TIMEOUTS.userListPage, retry },
+    );
+  }
+
+  const { mappings, unmatchedOldCount, warnings } = matchResult;
 
   if (unmatchedOldCount > 0) {
     warnings.push(
@@ -315,4 +363,4 @@ export async function syncUsers(config: SyncConfig): Promise<SyncResult> {
   return executeSyncPlan(plan, config);
 }
 
-export type { SyncOptions, SyncResult, SyncPlan, UserMapping, ColumnTarget, UpdateRecord, ConfidenceScore, ConfidenceLevel, ConflictReport } from './types';
+export type { SyncOptions, SyncResult, SyncPlan, UserMapping, ColumnTarget, UpdateRecord, ConfidenceScore, ConfidenceLevel, ConflictReport, OldProjectSource, AuthExportUser, AuthExport } from './types';

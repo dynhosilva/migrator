@@ -3,7 +3,7 @@ import type { ConfidenceScore, ConfidenceLevel } from '../types';
 export interface ScoredUser {
   id: string;
   email?: string;
-  createdAt: string;
+  createdAt?: string;
   provider?: string;
 }
 
@@ -24,18 +24,28 @@ export function scoreMatch(oldUser: ScoredUser, newUser: ScoredUser): Confidence
     }
   }
 
-  const newCreatedMs = new Date(newUser.createdAt).getTime();
-  const daysSinceNewCreated = (Date.now() - newCreatedMs) / 86_400_000;
-  if (daysSinceNewCreated < 7) {
-    score -= 20;
-    reasons.push(`Conta criada há ${Math.round(daysSinceNewCreated)} dia(s) no novo projeto — verificar`);
-  }
+  // New account recency check — only when createdAt is available and valid
+  if (newUser.createdAt) {
+    const newCreatedMs = new Date(newUser.createdAt).getTime();
+    if (!isNaN(newCreatedMs)) {
+      const daysSinceNewCreated = (Date.now() - newCreatedMs) / 86_400_000;
+      if (daysSinceNewCreated < 7) {
+        score -= 20;
+        reasons.push(`Conta criada há ${Math.round(daysSinceNewCreated)} dia(s) no novo projeto — verificar`);
+      }
 
-  const oldCreatedMs = new Date(oldUser.createdAt).getTime();
-  const daysBetween = Math.abs(newCreatedMs - oldCreatedMs) / 86_400_000;
-  if (daysBetween < 30) {
-    score += 10;
-    reasons.push('Datas de criação próximas');
+      // Proximity of creation dates — only when both are available
+      if (oldUser.createdAt) {
+        const oldCreatedMs = new Date(oldUser.createdAt).getTime();
+        if (!isNaN(oldCreatedMs)) {
+          const daysBetween = Math.abs(newCreatedMs - oldCreatedMs) / 86_400_000;
+          if (daysBetween < 30) {
+            score += 10;
+            reasons.push('Datas de criação próximas');
+          }
+        }
+      }
+    }
   }
 
   const clamped = Math.max(0, Math.min(100, score));

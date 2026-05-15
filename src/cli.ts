@@ -454,7 +454,7 @@ program
   .command('sync-users')
   .description('Reconecta dados de usuários entre dois projetos Supabase após migração (cruza por email, atualiza todas as tabelas automaticamente)')
   .requiredOption('--old-url <url>', 'URL do projeto Supabase antigo')
-  .requiredOption('--old-key <key>', 'Service role key do projeto antigo')
+  .option('--old-key <key>', 'Service role key do projeto antigo (obrigatório quando não usar --old-auth-export)')
   .requiredOption('--new-url <url>', 'URL do projeto Supabase novo')
   .requiredOption('--new-key <key>', 'Service role key do projeto novo')
   .option('--dry-run', 'Exibe preview sem executar alterações')
@@ -463,9 +463,11 @@ program
   .option('--skip-columns <cols>', 'Colunas a ignorar (separadas por vírgula)')
   .option('--extra-columns <cols>', 'Colunas adicionais a detectar além das padrão (separadas por vírgula)')
   .option('--backup-dir <dir>', 'Diretório para salvar o backup de rollback')
+  .option('--old-auth-export <file>', 'Arquivo JSON com export de auth users do projeto antigo (alternativa à --old-key)')
+  .option('--old-auth-export-url <url>', 'URL remota com export JSON de auth users do projeto antigo')
   .option('-v, --verbose', 'Habilita saída verbose')
   .action(async (options: {
-    oldUrl: string; oldKey: string;
+    oldUrl: string; oldKey?: string;
     newUrl: string; newKey: string;
     dryRun?: boolean;
     batchSize?: string;
@@ -473,24 +475,54 @@ program
     skipColumns?: string;
     extraColumns?: string;
     backupDir?: string;
+    oldAuthExport?: string;
+    oldAuthExportUrl?: string;
     verbose?: boolean;
   }) => {
     if (options.verbose) setVerbose(true);
 
+    // Validate that either --old-key or --old-auth-export* is provided
+    const hasExport = !!(options.oldAuthExport || options.oldAuthExportUrl);
+    if (!hasExport && !options.oldKey) {
+      logger.error(
+        'É necessário fornecer --old-key ou --old-auth-export / --old-auth-export-url.\n' +
+        '  Use --old-key para a service_role key do projeto antigo, ou\n' +
+        '  use --old-auth-export para um arquivo JSON de export de usuários.',
+      );
+      process.exit(1);
+    }
+
     try {
-      const result = await syncUsers({
-        oldSupabase: { url: options.oldUrl, serviceKey: options.oldKey },
-        newSupabase: { url: options.newUrl, serviceKey: options.newKey },
-        options: {
-          dryRun: options.dryRun ?? false,
-          batchSize: parseInt(options.batchSize ?? '500', 10),
-          skipTables: options.skipTables ? options.skipTables.split(',').map(s => s.trim()) : [],
-          skipColumns: options.skipColumns ? options.skipColumns.split(',').map(s => s.trim()) : [],
-          extraColumns: options.extraColumns ? options.extraColumns.split(',').map(s => s.trim()) : [],
-          backupDir: options.backupDir,
-          verbose: options.verbose ?? false,
-        },
-      });
+      const syncOptions = {
+        dryRun: options.dryRun ?? false,
+        batchSize: parseInt(options.batchSize ?? '500', 10),
+        skipTables: options.skipTables ? options.skipTables.split(',').map(s => s.trim()) : [],
+        skipColumns: options.skipColumns ? options.skipColumns.split(',').map(s => s.trim()) : [],
+        extraColumns: options.extraColumns ? options.extraColumns.split(',').map(s => s.trim()) : [],
+        backupDir: options.backupDir,
+        verbose: options.verbose ?? false,
+      };
+
+      let result;
+      if (options.oldAuthExportUrl) {
+        result = await syncUsers({
+          oldSource: { kind: 'json-url', exportUrl: options.oldAuthExportUrl, url: options.oldUrl },
+          newSupabase: { url: options.newUrl, serviceKey: options.newKey },
+          options: syncOptions,
+        });
+      } else if (options.oldAuthExport) {
+        result = await syncUsers({
+          oldSource: { kind: 'json-file', filePath: options.oldAuthExport, url: options.oldUrl },
+          newSupabase: { url: options.newUrl, serviceKey: options.newKey },
+          options: syncOptions,
+        });
+      } else {
+        result = await syncUsers({
+          oldSupabase: { url: options.oldUrl, serviceKey: options.oldKey! },
+          newSupabase: { url: options.newUrl, serviceKey: options.newKey },
+          options: syncOptions,
+        });
+      }
 
       printSyncReport(result);
 

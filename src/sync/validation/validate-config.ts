@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { SyncConfig } from '../index';
 import { withTimeout, DEFAULT_TIMEOUTS, SyncTimeoutError } from '../utils/timeout';
 import { withRetry, DEFAULT_RETRY } from '../utils/retry';
+import type { OldProjectSource } from '../auth-source';
 
 export interface ConfigValidationResult {
   valid: boolean;
@@ -24,46 +25,77 @@ function decodeJwtRole(jwt: string): string | null {
   }
 }
 
+function validateOldSource(source: OldProjectSource, errors: string[]): void {
+  if (source.kind === 'service-key') {
+    const oldUrl = source.url.replace(/\/$/, '');
+    if (!SUPABASE_URL_RE.test(oldUrl)) {
+      errors.push(
+        `URL do projeto ANTIGO inválida: "${source.url}"\n` +
+        `  Esperado: https://xxxxxxxxxxxxxxxx.supabase.co`,
+      );
+    }
+    if (!JWT_STRUCTURE_RE.test(source.serviceKey)) {
+      errors.push(
+        'Service Role Key do projeto ANTIGO inválida.\n' +
+        '  Copie a chave no Supabase Dashboard → Project Settings → API → service_role.',
+      );
+    } else {
+      const role = decodeJwtRole(source.serviceKey);
+      if (role && role !== 'service_role') {
+        errors.push(
+          `Chave do projeto ANTIGO é do tipo "${role}" — a migração requer a chave "service_role".\n` +
+          '  No Supabase Dashboard → Project Settings → API → Service Role Key (não a anon key).',
+        );
+      }
+    }
+  } else if (source.kind === 'json-file') {
+    if (!source.filePath || !source.filePath.trim()) {
+      errors.push(
+        'Caminho do arquivo export JSON do projeto ANTIGO não pode estar vazio.\n' +
+        '  Informe o caminho via --old-auth-export.',
+      );
+    }
+    // Validate OLD URL only if provided
+    if (source.url) {
+      const oldUrl = source.url.replace(/\/$/, '');
+      if (!SUPABASE_URL_RE.test(oldUrl)) {
+        errors.push(
+          `URL do projeto ANTIGO inválida: "${source.url}"\n` +
+          `  Esperado: https://xxxxxxxxxxxxxxxx.supabase.co`,
+        );
+      }
+    }
+  } else if (source.kind === 'json-url') {
+    if (!source.exportUrl || !source.exportUrl.trim()) {
+      errors.push(
+        'URL do export JSON do projeto ANTIGO não pode estar vazia.\n' +
+        '  Informe a URL via --old-auth-export-url.',
+      );
+    }
+    // Validate OLD Supabase URL only if provided
+    if (source.url) {
+      const oldUrl = source.url.replace(/\/$/, '');
+      if (!SUPABASE_URL_RE.test(oldUrl)) {
+        errors.push(
+          `URL do projeto ANTIGO inválida: "${source.url}"\n` +
+          `  Esperado: https://xxxxxxxxxxxxxxxx.supabase.co`,
+        );
+      }
+    }
+  }
+}
+
 export function validateSyncConfig(config: SyncConfig): ConfigValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const oldUrl = config.oldSupabase.url.replace(/\/$/, '');
   const newUrl = config.newSupabase.url.replace(/\/$/, '');
 
-  if (!SUPABASE_URL_RE.test(oldUrl)) {
-    errors.push(
-      `URL do projeto ANTIGO inválida: "${config.oldSupabase.url}"\n` +
-      `  Esperado: https://xxxxxxxxxxxxxxxx.supabase.co`,
-    );
-  }
   if (!SUPABASE_URL_RE.test(newUrl)) {
     errors.push(
       `URL do projeto NOVO inválida: "${config.newSupabase.url}"\n` +
       `  Esperado: https://xxxxxxxxxxxxxxxx.supabase.co`,
     );
-  }
-
-  if (oldUrl && newUrl && oldUrl === newUrl) {
-    errors.push(
-      'Os dois projetos são os mesmos (mesma URL).\n' +
-      '  Use URLs diferentes para o projeto antigo e o projeto novo.',
-    );
-  }
-
-  if (!JWT_STRUCTURE_RE.test(config.oldSupabase.serviceKey)) {
-    errors.push(
-      'Service Role Key do projeto ANTIGO inválida.\n' +
-      '  Copie a chave no Supabase Dashboard → Project Settings → API → service_role.',
-    );
-  } else {
-    const role = decodeJwtRole(config.oldSupabase.serviceKey);
-    if (role && role !== 'service_role') {
-      errors.push(
-        `Chave do projeto ANTIGO é do tipo "${role}" — a migração requer a chave "service_role".\n` +
-        '  No Supabase Dashboard → Project Settings → API → Service Role Key (não a anon key).',
-      );
-    }
   }
 
   if (!JWT_STRUCTURE_RE.test(config.newSupabase.serviceKey)) {
@@ -79,6 +111,45 @@ export function validateSyncConfig(config: SyncConfig): ConfigValidationResult {
         '  No Supabase Dashboard → Project Settings → API → Service Role Key (não a anon key).',
       );
     }
+  }
+
+  // Determine how old users will be loaded
+  if (config.oldSource) {
+    validateOldSource(config.oldSource, errors);
+
+    // Check same URL conflict when old URL is available
+    const oldUrlRaw =
+      config.oldSource.kind === 'service-key' ? config.oldSource.url :
+      config.oldSource.url ?? '';
+
+    if (oldUrlRaw) {
+      const oldUrl = oldUrlRaw.replace(/\/$/, '');
+      if (oldUrl && newUrl && oldUrl === newUrl) {
+        errors.push(
+          'Os dois projetos são os mesmos (mesma URL).\n' +
+          '  Use URLs diferentes para o projeto antigo e o projeto novo.',
+        );
+      }
+    }
+  } else if (config.oldSupabase) {
+    // Legacy path: validate oldSupabase as service-key source
+    validateOldSource(
+      { kind: 'service-key', url: config.oldSupabase.url, serviceKey: config.oldSupabase.serviceKey },
+      errors,
+    );
+
+    const oldUrl = config.oldSupabase.url.replace(/\/$/, '');
+    if (oldUrl && newUrl && oldUrl === newUrl) {
+      errors.push(
+        'Os dois projetos são os mesmos (mesma URL).\n' +
+        '  Use URLs diferentes para o projeto antigo e o projeto novo.',
+      );
+    }
+  } else {
+    errors.push(
+      'Configuração da fonte do projeto ANTIGO ausente.\n' +
+      '  Forneça --old-key ou --old-auth-export.',
+    );
   }
 
   return { valid: errors.length === 0, errors, warnings };

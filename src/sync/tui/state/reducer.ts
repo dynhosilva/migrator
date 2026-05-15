@@ -13,6 +13,8 @@ export const INITIAL_SYNC_SESSION: SyncWizardSession = {
   executing: false,
   progressLog: [],
   error: null,
+  oldAuthMode: 'service-key',
+  oldAuthExport: '',
 };
 
 export function syncWizardReducer(
@@ -34,6 +36,8 @@ export function syncWizardReducer(
     case 'CLEAR_LOGS':     return { ...state, progressLog: [] };
     case 'SET_ERROR':
       return { ...state, error: action.error, screen: 'sync-error', executing: false, discovering: false };
+    case 'SET_OLD_AUTH_MODE':   return { ...state, oldAuthMode: action.value };
+    case 'SET_OLD_AUTH_EXPORT': return { ...state, oldAuthExport: action.value };
     default:               return state;
   }
 }

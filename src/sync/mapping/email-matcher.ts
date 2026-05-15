@@ -3,6 +3,7 @@ import type { UserMapping } from '../types';
 import { scoreMatch, type ScoredUser } from './confidence-scorer';
 import { withTimeout, DEFAULT_TIMEOUTS } from '../utils/timeout';
 import { withRetry, DEFAULT_RETRY, type RetryOptions } from '../utils/retry';
+import type { AuthExportUser } from '../auth-source';
 
 export interface MatchResult {
   mappings: UserMapping[];
@@ -75,16 +76,7 @@ async function listAllUsers(client: SupabaseClient, opts: ListUsersOptions = {})
   return users;
 }
 
-export async function matchUsersByEmail(
-  oldClient: SupabaseClient,
-  newClient: SupabaseClient,
-  opts: ListUsersOptions = {},
-): Promise<MatchResult> {
-  const [oldUsers, newUsers] = await Promise.all([
-    listAllUsers(oldClient, opts),
-    listAllUsers(newClient, opts),
-  ]);
-
+function buildMappings(oldUsers: ScoredUser[], newUsers: ScoredUser[]): MatchResult {
   const newByEmail = new Map(
     newUsers
       .filter(u => u.email)
@@ -128,4 +120,34 @@ export async function matchUsersByEmail(
   }
 
   return { mappings, unmatchedOldCount, warnings };
+}
+
+export async function matchUsersByEmail(
+  oldClient: SupabaseClient,
+  newClient: SupabaseClient,
+  opts: ListUsersOptions = {},
+): Promise<MatchResult> {
+  const [oldUsers, newUsers] = await Promise.all([
+    listAllUsers(oldClient, opts),
+    listAllUsers(newClient, opts),
+  ]);
+
+  return buildMappings(oldUsers, newUsers);
+}
+
+export async function matchUsersByEmailFromExport(
+  exportUsers: AuthExportUser[],
+  newClient: SupabaseClient,
+  opts: ListUsersOptions = {},
+): Promise<MatchResult> {
+  const oldUsers: ScoredUser[] = exportUsers.map(u => ({
+    id: u.id,
+    email: u.email,
+    createdAt: u.created_at,
+    provider: undefined,
+  }));
+
+  const newUsers = await listAllUsers(newClient, opts);
+
+  return buildMappings(oldUsers, newUsers);
 }

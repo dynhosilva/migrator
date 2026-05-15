@@ -1,3 +1,5 @@
+export type { AuthExportUser, AuthExport, OldProjectSource } from './auth-source';
+
 export type ConfidenceLevel = 'high' | 'medium' | 'suspicious';
 
 export interface ConfidenceScore {

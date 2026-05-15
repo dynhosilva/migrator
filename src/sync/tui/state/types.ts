@@ -23,6 +23,8 @@ export interface SyncWizardSession {
   readonly executing: boolean;
   readonly progressLog: string[];
   readonly error: string | null;
+  readonly oldAuthMode: 'service-key' | 'json-export';
+  readonly oldAuthExport: string;  // file path or export URL
 }
 
 export type SyncWizardAction =
@@ -38,4 +40,6 @@ export type SyncWizardAction =
   | { type: 'SET_RESULT'; result: SyncResult }
   | { type: 'ADD_LOG'; message: string }
   | { type: 'CLEAR_LOGS' }
-  | { type: 'SET_ERROR'; error: string };
+  | { type: 'SET_ERROR'; error: string }
+  | { type: 'SET_OLD_AUTH_MODE'; value: 'service-key' | 'json-export' }
+  | { type: 'SET_OLD_AUTH_EXPORT'; value: string };
