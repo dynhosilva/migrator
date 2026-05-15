@@ -1,6 +1,6 @@
 {
   "name": "lovable-migrate",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "CLI migration engine for Lovable.dev projects — auto-detects stack, generates Dockerfile, GitHub Actions CI/CD, and remote deploy plan. Zero original-project modification.",
   "type": "commonjs",
   "main": "dist/index.js",
