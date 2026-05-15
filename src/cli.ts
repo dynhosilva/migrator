@@ -1,4 +1,16 @@
 #!/usr/bin/env node
+
+// Runtime guard — fail fast with a clear message before any module loads
+const _nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+if (_nodeMajor < 20) {
+  process.stderr.write(
+    `erro: lovable-migrate requer Node.js 20 ou superior.\n` +
+    `  Versão atual: ${process.versions.node}\n` +
+    `  Atualize em: https://nodejs.org\n`,
+  );
+  process.exit(1);
+}
+
 import path from 'path';
 import { Command } from 'commander';
 import { resolveSource }   from './sources';
@@ -17,6 +29,7 @@ import { runDemo }         from './demo';
 import { syncUsers }       from './sync';
 import { printSyncReport } from './sync/report/sync-report';
 import { startSyncWizard } from './sync/tui';
+import { runDoctor }       from './doctor';
 import { createContext }   from './core';
 import { TerminalRenderer, JsonRenderer } from './output';
 import { logger, setVerbose } from './logger';
@@ -565,6 +578,13 @@ program
     const port = parseInt(options.port ?? '3001', 10);
     const host = options.host ?? '127.0.0.1';
     await startServer({ port, host });
+  });
+
+program
+  .command('doctor')
+  .description('Verifica o ambiente de execução (Node.js, npm, Docker) e valida a instalação')
+  .action(() => {
+    runDoctor();
   });
 
 program.parse(process.argv);

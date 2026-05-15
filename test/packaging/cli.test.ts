@@ -78,6 +78,25 @@ describe('CLI — execução do dist compilado', () => {
   });
 });
 
+// ─── Comando doctor ───────────────────────────────────────────────────────────
+
+describe('CLI — comando doctor', () => {
+  it.skipIf(!distExists())('doctor executa e exibe status de Node.js', () => {
+    const out = run('doctor');
+    expect(out).toContain('Node.js');
+  });
+
+  it.skipIf(!distExists())('doctor exibe a versão do lovable-migrate', () => {
+    const out = run('doctor');
+    expect(out).toContain(PKG.version);
+  });
+
+  it.skipIf(!distExists())('doctor exibe status de npm', () => {
+    const out = run('doctor');
+    expect(out).toContain('npm');
+  });
+});
+
 // ─── Shebang e permissões ─────────────────────────────────────────────────────
 
 describe('CLI — shebang e entrypoint', () => {

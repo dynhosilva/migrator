@@ -95,6 +95,7 @@ describe('dist/ — artefatos compilados', () => {
     'analyzer', 'planner', 'validator', 'migrator',
     'deploy', 'cicd', 'executor', 'runtime', 'remote',
     'server', 'tui', 'core', 'sources', 'output', 'logger',
+    'sync', 'integrations',
   ];
 
   for (const mod of EXPECTED_MODULES) {
@@ -119,5 +120,77 @@ describe('version — consistência entre artefatos', () => {
   it('VERSION de src/version.ts é igual ao package.json', async () => {
     const { VERSION } = await import('../../src/version');
     expect(VERSION).toBe(pkg.version);
+  });
+});
+
+// ─── npm pack — conteúdo do tarball ──────────────────────────────────────────
+
+describe('npm pack — conteúdo publicado', () => {
+  const { execSync } = require('child_process') as typeof import('child_process');
+
+  function packDryRun(): string {
+    return execSync('npm pack --dry-run 2>&1', {
+      cwd: ROOT,
+      encoding: 'utf-8',
+      timeout: 30_000,
+    });
+  }
+
+  let packOutput: string;
+  try {
+    packOutput = packDryRun();
+  } catch {
+    packOutput = '';
+  }
+
+  it('npm pack executa sem erros', () => {
+    expect(packOutput.length).toBeGreaterThan(0);
+    expect(packOutput).not.toContain('npm ERR!');
+  });
+
+  it('tarball inclui dist/cli.js', () => {
+    expect(packOutput).toContain('dist/cli.js');
+  });
+
+  it('tarball inclui dist/index.js', () => {
+    expect(packOutput).toContain('dist/index.js');
+  });
+
+  it('tarball inclui dist/sync/', () => {
+    expect(packOutput).toContain('dist/sync/');
+  });
+
+  it('tarball inclui dist/integrations/', () => {
+    expect(packOutput).toContain('dist/integrations/');
+  });
+
+  it('tarball NÃO inclui src/', () => {
+    // src/ must never be published — only dist/ is in files whitelist
+    const lines = packOutput.split('\n').filter(l => l.includes('npm notice'));
+    const srcLines = lines.filter(l => /\bsrc\//.test(l));
+    expect(srcLines).toHaveLength(0);
+  });
+
+  it('tarball NÃO inclui test/', () => {
+    const lines = packOutput.split('\n').filter(l => l.includes('npm notice'));
+    const testLines = lines.filter(l => /\btest\//.test(l));
+    expect(testLines).toHaveLength(0);
+  });
+
+  it('tarball NÃO inclui tsconfig.json', () => {
+    const lines = packOutput.split('\n').filter(l => l.includes('npm notice'));
+    const tsLines = lines.filter(l => /tsconfig/.test(l));
+    expect(tsLines).toHaveLength(0);
+  });
+
+  it('tamanho comprimido é razoável (< 2 MB)', () => {
+    // Catches accidental inclusion of large assets or node_modules
+    const sizeMatch = packOutput.match(/package size:\s+([\d.]+)\s*(kB|MB)/);
+    if (sizeMatch) {
+      const value = parseFloat(sizeMatch[1]);
+      const unit = sizeMatch[2];
+      const sizeKb = unit === 'MB' ? value * 1024 : value;
+      expect(sizeKb).toBeLessThan(2048);
+    }
   });
 });
