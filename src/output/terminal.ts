@@ -834,10 +834,18 @@ function renderGuide(state: GuideState): void {
     console.log(`  ${chalk.green('✓')}  ${chalk.white(f.relativePath)}`);
     console.log(`     ${chalk.gray(f.description)}`);
   }
+  for (const s of state.scripts.scripts) {
+    const where = s.executionLocation === 'local'
+      ? chalk.cyan('[local]')
+      : chalk.blue('[remoto]');
+    console.log(`  ${chalk.green('✓')}  ${chalk.white(s.relativePath)} ${where}`);
+    console.log(`     ${chalk.gray(s.purpose)}`);
+  }
 
   console.log('');
   console.log(chalk.dim(`  → Abra ${state.outputDir}/deployment-guide/DEPLOY.md para entender o processo`));
   console.log(chalk.dim(`  → Abra ${state.outputDir}/deployment-guide/CHECKLIST.md para acompanhar o progresso`));
+  console.log(chalk.dim(`  → Antes de usar os scripts: ${state.scripts.chmodCommand}`));
   console.log('');
 }
 

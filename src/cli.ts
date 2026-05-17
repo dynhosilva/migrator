@@ -527,6 +527,8 @@ program
       logger.info('Pacote de deploy assistido gerado:');
       logger.info(`  deployment-guide/DEPLOY.md     — guia narrativo passo a passo (PT-BR)`);
       logger.info(`  deployment-guide/CHECKLIST.md  — checklist operacional verificável`);
+      logger.info(`  deployment-guide/scripts/      — 6 scripts bash contextuais (01-setup-vps.sh ... 06-health-check.sh)`);
+      logger.info(`  Antes de rodar os scripts:      chmod +x ${guided.guide?.scripts.scriptsDir}/*.sh`);
 
       const renderer = options.format === 'json'
         ? new JsonRenderer()

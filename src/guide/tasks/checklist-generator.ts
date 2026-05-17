@@ -6,6 +6,7 @@ import type {
   ChecklistItem,
   GeneratedFile,
 } from '../types';
+import { scriptRefFor } from './script-generator';
 
 // ─── Constantes de apresentação ───────────────────────────────────────────────
 
@@ -146,19 +147,20 @@ function buildDockerInstallSection(_ctx: ProjectContext, _config: GuideConfig): 
   const items: ChecklistItem[] = [
     item('docker.update',
       'Atualizei o sistema (`apt-get update && apt-get upgrade -y`)',
-      { estimatedMinutes: 2, difficulty: 'easy' }),
+      { estimatedMinutes: 2, difficulty: 'easy', scriptRef: scriptRefFor('setup-vps') }),
     item('docker.install',
       'Instalei o Docker (`curl -fsSL https://get.docker.com | sh`)',
-      { estimatedMinutes: 2, difficulty: 'easy' }),
+      { estimatedMinutes: 2, difficulty: 'easy', scriptRef: scriptRefFor('install-docker') }),
     item('docker.compose',
       'Instalei o plugin Compose (`apt-get install -y docker-compose-plugin`)',
-      { estimatedMinutes: 1, difficulty: 'easy' }),
+      { estimatedMinutes: 1, difficulty: 'easy', scriptRef: scriptRefFor('install-docker') }),
     item('docker.verify',
       'Validei: `docker --version` e `docker compose version` retornam versões',
       {
         estimatedMinutes: 1,
         difficulty: 'easy',
         warning: 'Se algum comando retornar "not found", repita a instalação anterior.',
+        scriptRef: scriptRefFor('install-docker'),
       }),
   ];
 
@@ -186,6 +188,7 @@ function buildUploadSection(ctx: ProjectContext, config: GuideConfig): Checklist
         estimatedMinutes: 3,
         difficulty: 'medium',
         warning: 'Rode esse comando no terminal do **seu computador**, não no terminal SSH do servidor.',
+        scriptRef: scriptRefFor('upload'),
       }),
     item('upload.verify',
       `Confirmei no servidor: \`ls ${config.remotePath}/docker\` mostra os arquivos`,
@@ -257,6 +260,7 @@ function buildDeploySection(_ctx: ProjectContext, config: GuideConfig): Checklis
         estimatedMinutes: 4,
         difficulty: 'medium',
         warning: 'A primeira execução demora — está baixando a imagem base e construindo a sua.',
+        scriptRef: scriptRefFor('deploy'),
       }),
     item('deploy.status',
       'Verifiquei `docker compose ps` — container com status `running`',
@@ -362,26 +366,28 @@ function buildSslSection(_ctx: ProjectContext, config: GuideConfig): ChecklistSe
   const items: ChecklistItem[] = [
     item('ssl.nginx-install',
       'Instalei o Nginx (`apt-get install -y nginx`)',
-      { estimatedMinutes: 1, difficulty: 'easy' }),
+      { estimatedMinutes: 1, difficulty: 'easy', scriptRef: scriptRefFor('ssl') }),
     item('ssl.nginx-config',
       `Criei \`/etc/nginx/sites-available/${exemplo}\` com proxy_pass para porta ${port}`,
-      { estimatedMinutes: 3, difficulty: 'medium' }),
+      { estimatedMinutes: 3, difficulty: 'medium', scriptRef: scriptRefFor('ssl') }),
     item('ssl.nginx-enable',
       'Ativei: `ln -s ... && nginx -t && systemctl reload nginx`',
       {
         estimatedMinutes: 1,
         difficulty: 'medium',
         warning: '`nginx -t` precisa retornar `syntax is ok`. Se não retornar, revise o arquivo.',
+        scriptRef: scriptRefFor('ssl'),
       }),
     item('ssl.certbot-install',
       'Instalei o Certbot (`apt-get install -y certbot python3-certbot-nginx`)',
-      { estimatedMinutes: 1, difficulty: 'easy' }),
+      { estimatedMinutes: 1, difficulty: 'easy', scriptRef: scriptRefFor('ssl') }),
     item('ssl.certbot-run',
       `Gerei o certificado (\`certbot --nginx -d ${exemplo} -d www.${exemplo}\`)`,
       {
         estimatedMinutes: 2,
         difficulty: 'medium',
         warning: 'O DNS precisa já ter propagado. Se falhar com erro de DNS, volte ao passo anterior.',
+        scriptRef: scriptRefFor('ssl'),
       }),
   ];
 
@@ -402,7 +408,7 @@ function buildPostDeploySection(_ctx: ProjectContext, config: GuideConfig): Chec
   const items: ChecklistItem[] = [
     item('post.access',
       `Acessei \`${accessUrl}\` ${hasDomain ? 'com cadeado verde' : ''}`,
-      { estimatedMinutes: 1, difficulty: 'easy' }),
+      { estimatedMinutes: 1, difficulty: 'easy', scriptRef: scriptRefFor('health-check') }),
     item('post.flow',
       'Testei o fluxo principal da aplicação (login, navegação, ações críticas)',
       {
@@ -412,7 +418,7 @@ function buildPostDeploySection(_ctx: ProjectContext, config: GuideConfig): Chec
       }),
     item('post.logs',
       'Inspecionei `docker compose logs --tail=200` em busca de erros',
-      { estimatedMinutes: 2, difficulty: 'easy' }),
+      { estimatedMinutes: 2, difficulty: 'easy', scriptRef: scriptRefFor('health-check') }),
   ];
 
   return {

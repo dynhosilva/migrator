@@ -5,6 +5,7 @@ import { GuideRegistry }       from './registry';
 import { resolveTargetProfile } from './targets';
 import { generateDeployDoc }   from './tasks/deploy-doc-generator';
 import { generateChecklist }   from './tasks/checklist-generator';
+import { generateScripts }     from './tasks/script-generator';
 import { writeGeneratedFiles } from '../migrator/writer';
 import { withGuide }           from '../core';
 import { logger }              from '../logger';
@@ -23,13 +24,16 @@ const DIFFICULTY_LEVEL: GuideState['difficultyLevel'] = 'beginner';
  * Ordem de registro:
  *  - deployDoc: artefato narrativo — explica o "como" e "por quê" de cada passo
  *  - checklist: artefato operacional verificável — guia execução com checkboxes
+ *  - scripts:   scripts bash contextuais (`01-setup-vps.sh` ... `06-health-check.sh`)
  *
- * As duas tasks são independentes (não há `partial.deployDoc!` consumido pelo
- * checklist). Ambas leem do mesmo `ctx + config` — o que garante consistência
- * de conteúdo entre os dois documentos sem acoplamento.
+ * As três tasks são independentes — nenhuma depende de `partial.X!` de outra.
+ * Cada uma lê do mesmo `ctx + config`, o que garante consistência de conteúdo
+ * entre os artefatos sem acoplamento de execução. A referência cruzada entre
+ * checklist (scriptRef) e scripts é feita via constantes estáticas em
+ * `tasks/script-generator.ts` (SCRIPT_FILENAMES), não pelo `partial`.
  *
- * Tasks futuras (Fase 1.x e Fase 2): scripts bash, configs Nginx, troubleshooting
- * estendido. Cada uma vive em seu próprio arquivo em `tasks/`.
+ * Tasks futuras (Fase 2): configs Nginx dedicados, troubleshooting estendido.
+ * Cada uma vive em seu próprio arquivo em `tasks/`.
  */
 const registry = new GuideRegistry()
   .register({
@@ -39,6 +43,10 @@ const registry = new GuideRegistry()
   .register({
     key: 'checklist',
     run: ({ ctx, config }) => generateChecklist(ctx, config),
+  })
+  .register({
+    key: 'scripts',
+    run: ({ ctx, config }) => generateScripts(ctx, config),
   });
 
 // ─── Resolução de config ──────────────────────────────────────────────────────
@@ -88,7 +96,8 @@ function collectAllFiles(partial: Partial<GuideState>): GeneratedFile[] {
   return [
     ...(partial.deployDoc?.files ?? []),
     ...(partial.checklist?.files ?? []),
-    // Fases futuras adicionarão aqui: scripts, nginx, troubleshoot
+    ...(partial.scripts?.files   ?? []),
+    // Fases futuras adicionarão aqui: nginx, troubleshoot estendido
   ];
 }
 
@@ -141,7 +150,10 @@ export function guideProject(
   const deployDocMinutes = partial.deployDoc?.estimatedMinutes ?? 0;
   const checklistMinutes = partial.checklist?.estimatedMinutes ?? 0;
   // Tempo total = checklist (já agrega todas as fases operacionais).
-  // deployDoc.estimatedMinutes é tempo de leitura, não somado para evitar dupla contagem.
+  // deployDoc.estimatedMinutes é tempo de leitura.
+  // scripts.estimatedMinutes é tempo de execução dos scripts — já está incluído
+  // no checklist (cada item tem `estimatedMinutes` e o checklist soma todos).
+  // Logo, ficamos com o maior dos dois para não dupla-contar.
   const totalMinutes = Math.max(deployDocMinutes, checklistMinutes);
 
   return {
@@ -153,6 +165,7 @@ export function guideProject(
     remotePath:            config.remotePath,
     deployDoc:             partial.deployDoc!,
     checklist:             partial.checklist!,
+    scripts:               partial.scripts!,
     difficultyLevel:       DIFFICULTY_LEVEL,
     estimatedTotalMinutes: totalMinutes,
     generatedAt:           new Date().toISOString(),
@@ -190,5 +203,11 @@ export type {
   ChecklistItem,
   ChecklistPhase,
   ChecklistDifficulty,
+  BashScriptsArtifact,
+  BashScriptFile,
+  BashScriptKey,
+  BashScriptExecutionLocation,
   GeneratedFile,
 } from './types';
+
+export { SCRIPT_FILENAMES, SCRIPTS_DIR, scriptRefFor } from './tasks/script-generator';

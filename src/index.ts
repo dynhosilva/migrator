@@ -138,7 +138,17 @@ export type {
 } from './cicd';
 
 // Guide — geração de pacote de deploy assistido humano (DEPLOY.md, scripts, nginx, etc.)
-export { guideProject, guideContext, resolveTargetProfile, listAvailableTargets, HOSTINGER_PROFILE, GENERIC_PROFILE } from './guide';
+export {
+  guideProject,
+  guideContext,
+  resolveTargetProfile,
+  listAvailableTargets,
+  HOSTINGER_PROFILE,
+  GENERIC_PROFILE,
+  SCRIPT_FILENAMES,
+  SCRIPTS_DIR,
+  scriptRefFor,
+} from './guide';
 export type {
   GuideState,
   GuideOptions,
@@ -147,6 +157,10 @@ export type {
   GuideTargetProfile,
   DeployDocArtifact,
   ChecklistArtifact,
+  BashScriptsArtifact,
+  BashScriptFile,
+  BashScriptKey,
+  BashScriptExecutionLocation,
 } from './guide';
 
 // Aliased na exportação pública para evitar colisão com `ChecklistItem` do planner

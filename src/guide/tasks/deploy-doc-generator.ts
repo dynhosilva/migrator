@@ -3,6 +3,7 @@ import type { GuideConfig, DeployDocArtifact, GeneratedFile } from '../types';
 import type { GuideTargetProfile } from '../types';
 import type { AnalysisReport } from '../../analyzer/types';
 import type { MigrationPlan, DeployTarget } from '../../planner/types';
+import { SCRIPTS_DIR, SCRIPT_FILENAMES } from './script-generator';
 
 // ─── Constantes de apresentação ───────────────────────────────────────────────
 
@@ -39,6 +40,39 @@ function envBlock(vars: string[]): string {
 
 function callout(emoji: string, title: string, body: string): string {
   return `> ${emoji} **${title}**  \n> ${body}`;
+}
+
+/**
+ * Callout de "atalho via script" — referencia um ou mais scripts gerados em
+ * `deployment-guide/scripts/` para o passo atual. O guia narrativo continua
+ * sendo a fonte de verdade educacional; o script é opcional, para quem já
+ * entendeu o que vai acontecer e quer acelerar.
+ *
+ * Aceita uma lista de scripts (cada item: filename + comando completo de uso)
+ * para passos cobertos por mais de um script (ex: passo 3 = setup-vps + install-docker).
+ */
+function scriptShortcut(
+  scripts: ReadonlyArray<{ readonly filename: string; readonly command: string }>,
+  location: 'local' | 'remote',
+  extra?: string,
+): string {
+  const where = location === 'local'
+    ? 'do seu computador'
+    : 'do servidor (SSH)';
+
+  const codeLines = scripts.map((s) => `> ${s.command}`);
+  const filenamesList = scripts.map((s) => `\`${SCRIPTS_DIR}/${s.filename}\``).join(' e ');
+  const detail = extra ? `  \n> ${extra}` : '';
+
+  return [
+    '> 💡 **Atalho via script**  ',
+    `> Esse passo já está empacotado em ${filenamesList}. No terminal ${where}, rode:`,
+    '>',
+    '> ```bash',
+    ...codeLines,
+    '> ```',
+    `> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.${detail}`,
+  ].join('\n');
 }
 
 // ─── Seções do documento ──────────────────────────────────────────────────────
@@ -93,6 +127,12 @@ function buildOverview(): string {
     '9. Configurar HTTPS com SSL gratuito',
     '',
     'Cada passo tem um título claro, o comando exato para copiar, e uma explicação de **o que aquele comando faz**.',
+    '',
+    callout(
+      '🚀',
+      'Atalho disponível',
+      `Cada um desses passos também está empacotado como script bash em \`${SCRIPTS_DIR}/\`. Você pode ler o guia uma vez para entender, e nas próximas usar os scripts para acelerar — veja a seção **Atalhos via script** antes do troubleshooting.`,
+    ),
     '',
   ].join('\n');
 }
@@ -166,6 +206,15 @@ function buildStep3Docker(): string {
     '',
     'O servidor vem com o sistema operacional, mas ainda não tem o Docker. Vamos atualizar tudo e instalar.',
     '',
+    scriptShortcut(
+      [
+        { filename: SCRIPT_FILENAMES['setup-vps'],      command: `bash ${SCRIPTS_DIR}/${SCRIPT_FILENAMES['setup-vps']}` },
+        { filename: SCRIPT_FILENAMES['install-docker'], command: `bash ${SCRIPTS_DIR}/${SCRIPT_FILENAMES['install-docker']}` },
+      ],
+      'remote',
+      'Os scripts cobrem 3.1 (update do sistema + firewall básico) e 3.2/3.3/3.4 (Docker + Compose + validação).',
+    ),
+    '',
     '### 3.1 Atualizar o sistema',
     '',
     bashBlock('apt-get update && apt-get upgrade -y'),
@@ -201,6 +250,12 @@ function buildStep4Transfer(ctx: ProjectContext, config: GuideConfig): string {
     '## Passo 4 — Enviar os arquivos do projeto para o servidor',
     '',
     `O \`lovable-migrate\` já gerou todos os arquivos que o servidor precisa em \`output/${projectName}/\` no seu computador. Agora você vai copiá-los para o servidor.`,
+    '',
+    scriptShortcut(
+      [{ filename: SCRIPT_FILENAMES['upload'], command: `bash ${SCRIPTS_DIR}/${SCRIPT_FILENAMES['upload']} SEU_IP_AQUI` }],
+      'local',
+      'O script cuida do `mkdir` remoto, empacota com `tar` e envia via SSH streaming (mais rápido que múltiplos `scp`).',
+    ),
     '',
     '### 4.1 Criar o diretório no servidor',
     '',
@@ -276,6 +331,12 @@ function buildStep6Compose(config: GuideConfig): string {
     '## Passo 6 — Subir a aplicação com Docker Compose',
     '',
     'Agora vamos ligar a aplicação. O `docker-compose.yml` que o `lovable-migrate` gerou já está configurado.',
+    '',
+    scriptShortcut(
+      [{ filename: SCRIPT_FILENAMES['deploy'], command: `bash ${SCRIPTS_DIR}/${SCRIPT_FILENAMES['deploy']}` }],
+      'remote',
+      'O script verifica `.env`, faz `docker compose up -d --build` e mostra status + logs iniciais.',
+    ),
     '',
     'No terminal SSH (no servidor):',
     '',
@@ -411,6 +472,15 @@ function buildStep9Ssl(config: GuideConfig): string {
     '',
     'Vamos adicionar o cadeado verde (`https://`). Usamos o Let\'s Encrypt, que é gratuito e automático.',
     '',
+    scriptShortcut(
+      [{
+        filename: SCRIPT_FILENAMES['ssl'],
+        command: `bash ${SCRIPTS_DIR}/${SCRIPT_FILENAMES['ssl']} ${domain} ${email}`,
+      }],
+      'remote',
+      'O script combina os Passos 8 e 9: instala Nginx + Certbot, cria o virtual host, gera o certificado e testa a renovação automática.',
+    ),
+    '',
     '### 9.1 Instalar Certbot',
     '',
     bashBlock('apt-get install -y certbot python3-certbot-nginx'),
@@ -439,6 +509,48 @@ function buildStep9Ssl(config: GuideConfig): string {
       '🎉',
       'Pronto!',
       `Sua aplicação está no ar em \`https://${domain}\` com cadeado verde, rodando em Docker, atrás do Nginx, com SSL gratuito que renova sozinho. Você acabou de fazer um deploy de produção profissional.`,
+    ),
+    '',
+  ].join('\n');
+}
+
+function buildScriptShortcuts(): string {
+  const rows: Array<readonly [string, string, string, string]> = [
+    [SCRIPT_FILENAMES['setup-vps'],      'servidor', 'Update + timezone + UFW',                              'Passo 3'],
+    [SCRIPT_FILENAMES['install-docker'], 'servidor', 'Docker Engine + Compose plugin',                       'Passo 3'],
+    [SCRIPT_FILENAMES['upload'],         'local',    'Empacota e envia docker/ + .env via tar|ssh streaming', 'Passo 4'],
+    [SCRIPT_FILENAMES['deploy'],         'servidor', 'docker compose up -d --build + logs',                  'Passo 6'],
+    [SCRIPT_FILENAMES['ssl'],            'servidor', 'Nginx + Certbot + virtual host + renew dry-run',       'Passos 8 e 9'],
+    [SCRIPT_FILENAMES['health-check'],   'servidor', 'Diagnóstico de Docker, app, Nginx, DNS, HTTPS',        'Pós-deploy'],
+  ];
+
+  const table = [
+    '| Script | Onde rodar | Faz | Cobre |',
+    '|---|---|---|---|',
+    ...rows.map(([file, where, does, covers]) =>
+      `| \`${SCRIPTS_DIR}/${file}\` | ${where} | ${does} | ${covers} |`,
+    ),
+  ].join('\n');
+
+  return [
+    '## Atalhos via script (opcional, mas recomendado)',
+    '',
+    `Todo passo acima também está empacotado como script bash em \`${SCRIPTS_DIR}/\`. Use os scripts depois de ler o guia narrativo — eles servem para acelerar e para você ter um registro reproduzível do deploy.`,
+    '',
+    '### Primeiro, libere a execução',
+    '',
+    'Os scripts vêm sem flag de execução. Antes de usá-los pela primeira vez, rode (uma única vez) onde os arquivos estiverem:',
+    '',
+    bashBlock(`chmod +x ${SCRIPTS_DIR}/*.sh`),
+    '',
+    '### Ordem recomendada de execução',
+    '',
+    table,
+    '',
+    callout(
+      'ℹ️',
+      'O script não substitui o guia',
+      'Cada script tem comentários PT-BR explicando linha a linha o que faz. Se algo der errado, abra o `.sh` correspondente — geralmente o motivo do erro está no comentário do passo que falhou.',
     ),
     '',
   ].join('\n');
@@ -531,6 +643,7 @@ export function generateDeployDoc(
     buildStep7Domain(config),
     buildStep8Nginx(config),
     buildStep9Ssl(config),
+    buildScriptShortcuts(),
     buildTroubleshooting(config.profile),
     buildFooter(plan, generatedAt),
   ];

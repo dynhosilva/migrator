@@ -70,11 +70,10 @@ export interface GuideConfig {
 /**
  * Artefato narrativo principal — o "DEPLOY.md".
  *
- * É o único artefato gerado na Fase 1 do módulo. Fases futuras adicionarão:
- *  - CHECKLIST.md          (checklist verificável)
- *  - scripts/*.sh          (bash gerado por contexto)
+ * Compõe o pacote v1 junto com `ChecklistArtifact` e `BashScriptsArtifact`.
+ * Fases futuras (1.x/2) adicionarão:
  *  - config/nginx-*.conf   (Nginx contextual)
- *  - troubleshooting/*.md  (erros comuns)
+ *  - troubleshooting/*.md  (erros comuns extensos)
  *
  * Cada artefato vive em seu próprio campo do GuideState. Tasks são independentes.
  */
@@ -82,6 +81,74 @@ export interface DeployDocArtifact {
   readonly files: GeneratedFile[];
   readonly stepCount: number;               // número de seções/passos numerados
   readonly estimatedMinutes: number;        // tempo estimado de leitura+execução
+}
+
+// ─── Artefato scripts bash (Fase 1.x) ─────────────────────────────────────────
+
+/**
+ * Identificador semântico de cada script bash gerado.
+ *
+ * Mantemos esses ids estáveis para que:
+ *  - O checklist possa referenciar via `scriptRef` sem hardcode de filename
+ *  - Consumidores externos (TUI, API) possam selecionar/filtrar scripts
+ *  - Adicionar novos scripts no futuro não quebre referências existentes
+ */
+export type BashScriptKey =
+  | 'setup-vps'
+  | 'install-docker'
+  | 'upload'
+  | 'deploy'
+  | 'ssl'
+  | 'health-check';
+
+/**
+ * Onde o script deve ser executado.
+ *
+ * - `local`: roda no computador do usuário (ex: scp/ssh para enviar arquivos).
+ * - `remote`: roda dentro do servidor (após o usuário abrir SSH).
+ *
+ * Esta distinção é exibida explicitamente nos comentários do script e no
+ * DEPLOY.md, para evitar o erro mais comum de iniciantes: rodar o comando
+ * de upload dentro do próprio servidor.
+ */
+export type BashScriptExecutionLocation = 'local' | 'remote';
+
+/**
+ * Definição estruturada de um script bash gerado.
+ *
+ * `content` é a string final gravada em disco (já com shebang, `set -euo pipefail`,
+ * comentários PT-BR e variáveis contextualizadas pelo projeto). `relativePath`
+ * é o destino dentro do outputDir, no formato `deployment-guide/scripts/XX-name.sh`.
+ */
+export interface BashScriptFile {
+  readonly key: BashScriptKey;
+  readonly filename: string;                          // ex: "02-install-docker.sh"
+  readonly relativePath: string;                      // ex: "deployment-guide/scripts/02-install-docker.sh"
+  readonly purpose: string;                           // descrição curta PT-BR
+  readonly executionLocation: BashScriptExecutionLocation;
+  readonly estimatedMinutes: number;
+  readonly requiresArguments: boolean;                // true se o usuário precisa passar args ao rodar
+  readonly content: string;
+}
+
+/**
+ * Resultado da task de geração de scripts.
+ *
+ * `scripts` é a lista ordenada (`01..06`) pronta para consumo pela TUI/API.
+ * `scriptsByKey` é o mesmo conteúdo indexado por chave — útil para o
+ * checklist preencher `scriptRef` sem depender da ordem.
+ *
+ * O módulo `guide` não executa nenhum script: ele apenas gera os arquivos.
+ * A execução é sempre manual, pelo usuário, na máquina apropriada (local ou remoto).
+ */
+export interface BashScriptsArtifact {
+  readonly files: GeneratedFile[];
+  readonly scripts: BashScriptFile[];
+  readonly scriptsByKey: Readonly<Record<BashScriptKey, BashScriptFile>>;
+  readonly totalScripts: number;
+  readonly estimatedMinutes: number;
+  readonly chmodCommand: string;                      // ex: "chmod +x deployment-guide/scripts/*.sh"
+  readonly scriptsDir: string;                        // ex: "deployment-guide/scripts"
 }
 
 // ─── Artefato CHECKLIST.md ────────────────────────────────────────────────────
@@ -169,6 +236,7 @@ export interface GuideState {
   readonly remotePath: string;
   readonly deployDoc: DeployDocArtifact;
   readonly checklist: ChecklistArtifact;
+  readonly scripts: BashScriptsArtifact;
   readonly difficultyLevel: 'beginner' | 'intermediate';
   readonly estimatedTotalMinutes: number;   // soma das estimativas de todos os artefatos
   readonly generatedAt: string;

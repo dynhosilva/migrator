@@ -71,16 +71,16 @@ _Acesse o servidor e confirme que está pronto para receber a aplicação._
 _Instale o Docker e o Compose no servidor — é o que vai rodar sua aplicação._
 
 - [ ] Atualizei o sistema (\`apt-get update && apt-get upgrade -y\`)
-      ⏱ 2 min · 📊 fácil
+      ⏱ 2 min · 📊 fácil · 📜 \`scripts/01-setup-vps.sh\`
 
 - [ ] Instalei o Docker (\`curl -fsSL https://get.docker.com | sh\`)
-      ⏱ 2 min · 📊 fácil
+      ⏱ 2 min · 📊 fácil · 📜 \`scripts/02-install-docker.sh\`
 
 - [ ] Instalei o plugin Compose (\`apt-get install -y docker-compose-plugin\`)
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/02-install-docker.sh\`
 
 - [ ] Validei: \`docker --version\` e \`docker compose version\` retornam versões
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/02-install-docker.sh\`
       > ⚠️ Se algum comando retornar "not found", repita a instalação anterior.
 
 ## 📦 Upload para Hostinger VPS — ~5 min
@@ -91,7 +91,7 @@ _Transfira os artefatos gerados em \`output/react-vite/\` para o servidor._
       ⏱ 1 min · 📊 fácil
 
 - [ ] Enviei os arquivos: \`scp -r docker/ .env root@SEU_IP:/opt/app/\`
-      ⏱ 3 min · 📊 médio
+      ⏱ 3 min · 📊 médio · 📜 \`scripts/03-upload-app.sh\`
       > ⚠️ Rode esse comando no terminal do **seu computador**, não no terminal SSH do servidor.
 
 - [ ] Confirmei no servidor: \`ls /opt/app/docker\` mostra os arquivos
@@ -119,7 +119,7 @@ _Configure as 2 variável(is) detectadas no projeto._
 _Suba os containers e confirme que a aplicação responde no IP do servidor._
 
 - [ ] Rodei \`docker compose up -d --build\` em \`/opt/app/docker\`
-      ⏱ 4 min · 📊 médio
+      ⏱ 4 min · 📊 médio · 📜 \`scripts/04-deploy-app.sh\`
       > ⚠️ A primeira execução demora — está baixando a imagem base e construindo a sua.
 
 - [ ] Verifiquei \`docker compose ps\` — container com status \`running\`
@@ -148,20 +148,20 @@ _Aponte \`meuapp.com\` para o IP do servidor — necessário antes do SSL._
 _Adicione o cadeado verde a \`https://meuapp.com\` — renova sozinho a cada 90 dias._
 
 - [ ] Instalei o Nginx (\`apt-get install -y nginx\`)
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/05-setup-ssl.sh\`
 
 - [ ] Criei \`/etc/nginx/sites-available/meuapp.com\` com proxy_pass para porta 80
-      ⏱ 3 min · 📊 médio
+      ⏱ 3 min · 📊 médio · 📜 \`scripts/05-setup-ssl.sh\`
 
 - [ ] Ativei: \`ln -s ... && nginx -t && systemctl reload nginx\`
-      ⏱ 1 min · 📊 médio
+      ⏱ 1 min · 📊 médio · 📜 \`scripts/05-setup-ssl.sh\`
       > ⚠️ \`nginx -t\` precisa retornar \`syntax is ok\`. Se não retornar, revise o arquivo.
 
 - [ ] Instalei o Certbot (\`apt-get install -y certbot python3-certbot-nginx\`)
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/05-setup-ssl.sh\`
 
 - [ ] Gerei o certificado (\`certbot --nginx -d meuapp.com -d www.meuapp.com\`)
-      ⏱ 2 min · 📊 médio
+      ⏱ 2 min · 📊 médio · 📜 \`scripts/05-setup-ssl.sh\`
       > ⚠️ O DNS precisa já ter propagado. Se falhar com erro de DNS, volte ao passo anterior.
 
 ## ✅ Pós-deploy — ~5 min
@@ -169,14 +169,14 @@ _Adicione o cadeado verde a \`https://meuapp.com\` — renova sozinho a cada 90 
 _Confirme que a aplicação está no ar e funcionando ponta a ponta._
 
 - [ ] Acessei \`https://meuapp.com\` com cadeado verde
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/06-health-check.sh\`
 
 - [ ] Testei o fluxo principal da aplicação (login, navegação, ações críticas)
       ⏱ 5 min · 📊 fácil
       > ⚠️ Se você usa Supabase, teste explicitamente o login e uma operação de leitura/escrita.
 
 - [ ] Inspecionei \`docker compose logs --tail=200\` em busca de erros
-      ⏱ 2 min · 📊 fácil
+      ⏱ 2 min · 📊 fácil · 📜 \`scripts/06-health-check.sh\`
 
 ## 🆘 Domino o operacional
 
@@ -277,16 +277,16 @@ _Acesse o servidor e confirme que está pronto para receber a aplicação._
 _Instale o Docker e o Compose no servidor — é o que vai rodar sua aplicação._
 
 - [ ] Atualizei o sistema (\`apt-get update && apt-get upgrade -y\`)
-      ⏱ 2 min · 📊 fácil
+      ⏱ 2 min · 📊 fácil · 📜 \`scripts/01-setup-vps.sh\`
 
 - [ ] Instalei o Docker (\`curl -fsSL https://get.docker.com | sh\`)
-      ⏱ 2 min · 📊 fácil
+      ⏱ 2 min · 📊 fácil · 📜 \`scripts/02-install-docker.sh\`
 
 - [ ] Instalei o plugin Compose (\`apt-get install -y docker-compose-plugin\`)
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/02-install-docker.sh\`
 
 - [ ] Validei: \`docker --version\` e \`docker compose version\` retornam versões
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/02-install-docker.sh\`
       > ⚠️ Se algum comando retornar "not found", repita a instalação anterior.
 
 ## 📦 Upload para Hostinger VPS — ~5 min
@@ -297,7 +297,7 @@ _Transfira os artefatos gerados em \`output/supabase-project/\` para o servidor.
       ⏱ 1 min · 📊 fácil
 
 - [ ] Enviei os arquivos: \`scp -r docker/ .env root@SEU_IP:/opt/app/\`
-      ⏱ 3 min · 📊 médio
+      ⏱ 3 min · 📊 médio · 📜 \`scripts/03-upload-app.sh\`
       > ⚠️ Rode esse comando no terminal do **seu computador**, não no terminal SSH do servidor.
 
 - [ ] Confirmei no servidor: \`ls /opt/app/docker\` mostra os arquivos
@@ -325,7 +325,7 @@ _Configure as 2 variável(is) detectadas. Os valores Supabase estão em Project 
 _Suba os containers e confirme que a aplicação responde no IP do servidor._
 
 - [ ] Rodei \`docker compose up -d --build\` em \`/opt/app/docker\`
-      ⏱ 4 min · 📊 médio
+      ⏱ 4 min · 📊 médio · 📜 \`scripts/04-deploy-app.sh\`
       > ⚠️ A primeira execução demora — está baixando a imagem base e construindo a sua.
 
 - [ ] Verifiquei \`docker compose ps\` — container com status \`running\`
@@ -354,20 +354,20 @@ _Aponte \`meuapp.com\` para o IP do servidor — necessário antes do SSL._
 _Adicione o cadeado verde a \`https://meuapp.com\` — renova sozinho a cada 90 dias._
 
 - [ ] Instalei o Nginx (\`apt-get install -y nginx\`)
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/05-setup-ssl.sh\`
 
 - [ ] Criei \`/etc/nginx/sites-available/meuapp.com\` com proxy_pass para porta 80
-      ⏱ 3 min · 📊 médio
+      ⏱ 3 min · 📊 médio · 📜 \`scripts/05-setup-ssl.sh\`
 
 - [ ] Ativei: \`ln -s ... && nginx -t && systemctl reload nginx\`
-      ⏱ 1 min · 📊 médio
+      ⏱ 1 min · 📊 médio · 📜 \`scripts/05-setup-ssl.sh\`
       > ⚠️ \`nginx -t\` precisa retornar \`syntax is ok\`. Se não retornar, revise o arquivo.
 
 - [ ] Instalei o Certbot (\`apt-get install -y certbot python3-certbot-nginx\`)
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/05-setup-ssl.sh\`
 
 - [ ] Gerei o certificado (\`certbot --nginx -d meuapp.com -d www.meuapp.com\`)
-      ⏱ 2 min · 📊 médio
+      ⏱ 2 min · 📊 médio · 📜 \`scripts/05-setup-ssl.sh\`
       > ⚠️ O DNS precisa já ter propagado. Se falhar com erro de DNS, volte ao passo anterior.
 
 ## ✅ Pós-deploy — ~5 min
@@ -375,14 +375,14 @@ _Adicione o cadeado verde a \`https://meuapp.com\` — renova sozinho a cada 90 
 _Confirme que a aplicação está no ar e funcionando ponta a ponta._
 
 - [ ] Acessei \`https://meuapp.com\` com cadeado verde
-      ⏱ 1 min · 📊 fácil
+      ⏱ 1 min · 📊 fácil · 📜 \`scripts/06-health-check.sh\`
 
 - [ ] Testei o fluxo principal da aplicação (login, navegação, ações críticas)
       ⏱ 5 min · 📊 fácil
       > ⚠️ Se você usa Supabase, teste explicitamente o login e uma operação de leitura/escrita.
 
 - [ ] Inspecionei \`docker compose logs --tail=200\` em busca de erros
-      ⏱ 2 min · 📊 fácil
+      ⏱ 2 min · 📊 fácil · 📜 \`scripts/06-health-check.sh\`
 
 ## 🆘 Domino o operacional
 
