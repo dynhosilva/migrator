@@ -23,6 +23,8 @@ import { executeContext }  from './executor';
 import { runContext }      from './runtime';
 import { prepareContext }  from './remote';
 import { cicdContext }     from './cicd';
+import { guideContext }    from './guide';
+import type { GuideTarget } from './guide';
 import { startServer }     from './server';
 import { startTui }        from './tui';
 import { runDemo }         from './demo';
@@ -46,6 +48,7 @@ program
     '  $ lovable-migrate demo                               # veja em ação agora',
     '  $ lovable-migrate analyze ./meu-projeto',
     '  $ lovable-migrate deploy ./meu-projeto --output ./output',
+    '  $ lovable-migrate guide ./meu-projeto --target hostinger --domain meuapp.com',
     '  $ lovable-migrate ui                                 # wizard interativo (recomendado)',
     '  $ lovable-migrate server --port 3001                 # API HTTP',
   ].join('\n'))
@@ -457,6 +460,79 @@ program
         : new TerminalRenderer();
 
       renderer.render(planned2);
+    } catch (err) {
+      logger.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('guide <input>')
+  .description('Gera pacote de deploy assistido em PT-BR (DEPLOY.md, foco em iniciantes)')
+  .option('-v, --verbose', 'Habilita saída verbose')
+  .option('-o, --output <dir>', 'Diretório de saída (padrão: ./output/<projeto>)')
+  .option('-f, --format <format>', 'Formato de saída: terminal | json', 'terminal')
+  .option('--force', 'Prossegue mesmo com issues críticos de validação')
+  .option('--target <provider>', 'Provedor de hospedagem: hostinger | digitalocean | aws-lightsail | generic', 'hostinger')
+  .option('--domain <domain>', 'Domínio do projeto (ex: meuapp.com — sem protocolo)')
+  .option('--port <port>', 'Porta de runtime da aplicação (default: extraída do deploy)')
+  .option('--remote-path <path>', 'Caminho no servidor remoto (default: vem do target)')
+  .option('--admin-email <email>', 'E-mail para Let\'s Encrypt / Certbot')
+  .action(async (input: string, options: {
+    verbose?: boolean; output?: string; format?: string; force?: boolean;
+    target?: string; domain?: string; port?: string; remotePath?: string; adminEmail?: string;
+  }) => {
+    if (options.verbose) setVerbose(true);
+
+    try {
+      const source      = resolveSource(input);
+      const files       = await source.load();
+      const projectName = path.basename(input).replace(/\.zip$/i, '');
+      const outputDir   = options.output ?? path.join('output', projectName);
+
+      logger.info(`Fonte: ${source.describe()}`);
+      logger.info(`Saída: ${path.resolve(outputDir)}`);
+
+      const ctx       = createContext(source, input, projectName, files);
+      const analyzed  = analyzeContext(ctx);
+      const planned   = planContext(analyzed);
+      const validated = validateContext(planned);
+
+      if (!validated.validation?.safeToMigrate && !options.force) {
+        const count = validated.validation?.summary.criticalCount ?? 0;
+        logger.error(`Validação bloqueou o pipeline: ${count} issue(s) crítico(s) detectado(s).`);
+        logger.error('Use --force para prosseguir mesmo com issues críticos.');
+        const renderer = options.format === 'json' ? new JsonRenderer() : new TerminalRenderer();
+        renderer.render(validated);
+        process.exit(1);
+      }
+
+      if (options.force && !validated.validation?.safeToMigrate) {
+        logger.warn('--force ativado: prosseguindo com issues críticos de validação.');
+      }
+
+      const migrated  = migrateContext(validated, outputDir);
+      const deployed  = deployContext(migrated, outputDir);
+
+      const guideOptions = {
+        target:     (options.target as GuideTarget) ?? undefined,
+        domain:     options.domain,
+        port:       options.port ? parseInt(options.port, 10) : undefined,
+        remotePath: options.remotePath,
+        adminEmail: options.adminEmail,
+      };
+
+      const guided = guideContext(deployed, outputDir, guideOptions);
+
+      logger.info('Pacote de deploy assistido gerado:');
+      logger.info(`  deployment-guide/DEPLOY.md     — guia narrativo passo a passo (PT-BR)`);
+      logger.info(`  deployment-guide/CHECKLIST.md  — checklist operacional verificável`);
+
+      const renderer = options.format === 'json'
+        ? new JsonRenderer()
+        : new TerminalRenderer();
+
+      renderer.render(guided);
     } catch (err) {
       logger.error((err as Error).message);
       process.exit(1);

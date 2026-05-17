@@ -17,6 +17,7 @@ import type { ExecutionState, ExecutionIssue as ExecIssue } from '../executor/ty
 import type { RuntimeState, RuntimeIssue as RtIssue } from '../runtime/types';
 import type { RemoteState, RemoteIssue as RmIssue } from '../remote/types';
 import type { CicdState } from '../cicd/types';
+import type { GuideState } from '../guide/types';
 
 const W = 56;
 const DIVIDER = chalk.gray('─'.repeat(W));
@@ -808,6 +809,38 @@ function renderRemote(state: RemoteState): void {
   console.log('');
 }
 
+function renderGuide(state: GuideState): void {
+  console.log('');
+  console.log(chalk.bold.magenta(`  ┌${'─'.repeat(W - 2)}┐`));
+  console.log(chalk.bold.magenta(`  │${'  Deploy Assistido — Pacote Humano'.padEnd(W - 2)}│`));
+  console.log(chalk.bold.magenta(`  └${'─'.repeat(W - 2)}┘`));
+  console.log('');
+
+  row('Projeto',  chalk.white(state.projectName));
+  row('Target',   chalk.white(state.target));
+  row('Domínio',  state.domain ? chalk.white(state.domain) : chalk.gray('(não configurado)'));
+  row('Porta',    chalk.white(String(state.port)));
+  row('Caminho',  chalk.white(state.remotePath));
+  row('Nível',    chalk.white(state.difficultyLevel));
+  row('Tempo',    chalk.white(`~${state.estimatedTotalMinutes} min`));
+  row('Checklist', chalk.white(`${state.checklist.totalItems} itens (${state.checklist.requiredItems} obrigatórios)`));
+
+  section('Artefatos gerados');
+  for (const f of state.deployDoc.files) {
+    console.log(`  ${chalk.green('✓')}  ${chalk.white(f.relativePath)}`);
+    console.log(`     ${chalk.gray(f.description)}`);
+  }
+  for (const f of state.checklist.files) {
+    console.log(`  ${chalk.green('✓')}  ${chalk.white(f.relativePath)}`);
+    console.log(`     ${chalk.gray(f.description)}`);
+  }
+
+  console.log('');
+  console.log(chalk.dim(`  → Abra ${state.outputDir}/deployment-guide/DEPLOY.md para entender o processo`));
+  console.log(chalk.dim(`  → Abra ${state.outputDir}/deployment-guide/CHECKLIST.md para acompanhar o progresso`));
+  console.log('');
+}
+
 export class TerminalRenderer implements Renderer {
   render(ctx: ProjectContext): void {
     if (!ctx.analysis) {
@@ -850,6 +883,10 @@ export class TerminalRenderer implements Renderer {
 
     if (ctx.remote) {
       renderRemote(ctx.remote);
+    }
+
+    if (ctx.guide) {
+      renderGuide(ctx.guide);
     }
   }
 }

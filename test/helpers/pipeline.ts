@@ -21,7 +21,9 @@ import { executeContext }  from '../../src/executor';
 import { runContext }      from '../../src/runtime';
 import { prepareContext }  from '../../src/remote';
 import { cicdContext }     from '../../src/cicd';
+import { guideContext }    from '../../src/guide';
 import type { RemoteOptions } from '../../src/remote/types';
+import type { GuideOptions } from '../../src/guide/types';
 import type { ProjectContext } from '../../src/core/types';
 
 /** Caminho absoluto para o diretório de fixtures. */
@@ -152,4 +154,21 @@ export async function runRemotePipeline(
 ): Promise<ProjectContext> {
   const deployed = await runPipeline(name, outputDir, force);
   return prepareContext(deployed, outputDir, options);
+}
+
+/**
+ * Executa o pipeline até a fase de guide:
+ * analyze → plan → validate → migrate → deploy → guide.
+ *
+ * O guide é puro template rendering — não abre SSH, não executa nada,
+ * apenas gera o pacote humano (DEPLOY.md + futuros artefatos).
+ */
+export async function runGuidePipeline(
+  name: string,
+  outputDir: string,
+  options?: GuideOptions,
+  force = false,
+): Promise<ProjectContext> {
+  const deployed = await runPipeline(name, outputDir, force);
+  return guideContext(deployed, outputDir, options);
 }

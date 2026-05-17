@@ -8,6 +8,7 @@ import type { ExecutionState } from '../executor/types';
 import type { RuntimeState } from '../runtime/types';
 import type { RemoteState } from '../remote/types';
 import type { CicdState } from '../cicd/types';
+import type { GuideState } from '../guide/types';
 
 export interface SourceInfo {
   kind: SourceKind;
@@ -61,4 +62,7 @@ export interface ProjectContext {
 
   // Preenchido pela fase de cicd (geração de workflows GitHub Actions)
   readonly cicd?: CicdState;
+
+  // Preenchido pela fase de guide (geração de pacote de deploy assistido humano)
+  readonly guide?: GuideState;
 }

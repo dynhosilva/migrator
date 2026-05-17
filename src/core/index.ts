@@ -8,6 +8,7 @@ import type { ExecutionState } from '../executor/types';
 import type { RuntimeState } from '../runtime/types';
 import type { RemoteState } from '../remote/types';
 import type { CicdState } from '../cicd/types';
+import type { GuideState } from '../guide/types';
 import type { ProjectContext } from './types';
 
 export type { ProjectContext, SourceInfo, ProjectMeta } from './types';
@@ -76,4 +77,9 @@ export function withRemote(ctx: ProjectContext, remote: RemoteState): ProjectCon
 /** Retorna novo contexto imutável com o resultado do cicd preenchido. */
 export function withCicd(ctx: ProjectContext, cicd: CicdState): ProjectContext {
   return { ...ctx, cicd };
+}
+
+/** Retorna novo contexto imutável com o resultado do guide preenchido. */
+export function withGuide(ctx: ProjectContext, guide: GuideState): ProjectContext {
+  return { ...ctx, guide };
 }

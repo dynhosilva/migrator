@@ -1,0 +1,409 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CHECKLIST — Pipeline completo (react-vite + hostinger + domínio) > CHECKLIST.md corresponde ao snapshot (após normalização) 1`] = `
+"# Checklist de Deploy — react-vite
+
+Marque cada item conforme conclui. O \`DEPLOY.md\` neste mesmo diretório explica o **como** de cada comando.
+
+| Campo | Valor |
+|---|---|
+| Projeto | \`react-vite\` |
+| Provedor | Hostinger VPS |
+| Domínio | \`meuapp.com\` |
+| Porta da aplicação | \`80\` |
+| Itens totais | 37 (32 obrigatórios) |
+| Tempo estimado | ~57 min |
+
+> ℹ️ **Como usar este checklist**  
+> Faça uma fase de cada vez, marcando os itens. Cada item tem o **tempo estimado** ao lado. Se algo der errado, consulte a seção **Troubleshooting rápido** no final ou abra o \`DEPLOY.md\`.
+
+## Progresso por fase
+
+| Fase | Itens | Tempo estimado |
+|---|---|---|
+| 🧰 Pré-deploy (no seu computador) | 4 | ~5 min |
+| 🖥 Setup do Hostinger VPS | 4 | ~5 min |
+| 🐳 Instalação do Docker | 4 | ~6 min |
+| 📦 Upload para Hostinger VPS | 3 | ~5 min |
+| 🔐 Variáveis de ambiente | 4 | ~4 min |
+| 🚀 Deploy da aplicação | 3 | ~6 min |
+| 🌐 Configuração de domínio (DNS) | 3 | ~13 min |
+| 🔒 HTTPS (SSL gratuito com Let's Encrypt) | 5 | ~8 min |
+| ✅ Pós-deploy | 3 | ~5 min |
+| 🆘 Domino o operacional | 4 | — |
+
+## 🧰 Pré-deploy (no seu computador) — ~5 min
+
+_Reúna tudo que você vai precisar antes de tocar no servidor._
+
+- [ ] Tenho a pasta \`output/react-vite/\` gerada pelo lovable-migrate
+      📊 fácil
+
+- [ ] Tenho um VPS ativo (KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe))
+      📊 fácil
+
+- [ ] Anotei o IP público do servidor
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Sem o IP, você não consegue acessar o servidor.
+
+- [ ] Já comprei o domínio \`meuapp.com\` _(opcional)_
+      📊 fácil
+
+## 🖥 Setup do Hostinger VPS — ~5 min
+
+_Acesse o servidor e confirme que está pronto para receber a aplicação._
+
+- [ ] Acessei o painel hPanel
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Confirmei que o sistema operacional é Ubuntu 22.04 LTS
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Outras distribuições funcionam, mas os comandos deste guia foram testados nesse SO.
+
+- [ ] Abri o terminal SSH (terminal de navegador ou ssh local)
+      ⏱ 2 min · 📊 fácil
+
+- [ ] Estou logado como \`root\` no servidor
+      ⏱ 1 min · 📊 fácil
+
+## 🐳 Instalação do Docker — ~6 min
+
+_Instale o Docker e o Compose no servidor — é o que vai rodar sua aplicação._
+
+- [ ] Atualizei o sistema (\`apt-get update && apt-get upgrade -y\`)
+      ⏱ 2 min · 📊 fácil
+
+- [ ] Instalei o Docker (\`curl -fsSL https://get.docker.com | sh\`)
+      ⏱ 2 min · 📊 fácil
+
+- [ ] Instalei o plugin Compose (\`apt-get install -y docker-compose-plugin\`)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Validei: \`docker --version\` e \`docker compose version\` retornam versões
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Se algum comando retornar "not found", repita a instalação anterior.
+
+## 📦 Upload para Hostinger VPS — ~5 min
+
+_Transfira os artefatos gerados em \`output/react-vite/\` para o servidor._
+
+- [ ] Criei \`/opt/app\` no servidor
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Enviei os arquivos: \`scp -r docker/ .env root@SEU_IP:/opt/app/\`
+      ⏱ 3 min · 📊 médio
+      > ⚠️ Rode esse comando no terminal do **seu computador**, não no terminal SSH do servidor.
+
+- [ ] Confirmei no servidor: \`ls /opt/app/docker\` mostra os arquivos
+      ⏱ 1 min · 📊 fácil
+
+## 🔐 Variáveis de ambiente — ~4 min
+
+_Configure as 2 variável(is) detectadas no projeto._
+
+- [ ] Criei o arquivo \`.env\` em \`/opt/app\` (no servidor)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Preenchi \`VITE_API_URL=...\`
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Preenchi \`VITE_APP_TITLE=...\`
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Salvei o arquivo (\`Ctrl+X\`, \`Y\`, \`Enter\` no nano)
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Esse arquivo contém segredos — nunca compartilhe em público.
+
+## 🚀 Deploy da aplicação — ~6 min
+
+_Suba os containers e confirme que a aplicação responde no IP do servidor._
+
+- [ ] Rodei \`docker compose up -d --build\` em \`/opt/app/docker\`
+      ⏱ 4 min · 📊 médio
+      > ⚠️ A primeira execução demora — está baixando a imagem base e construindo a sua.
+
+- [ ] Verifiquei \`docker compose ps\` — container com status \`running\`
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Acessei \`http://SEU_IP:80\` no navegador — a aplicação carregou
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Não abriu? Rode \`docker compose logs --tail=100\` e veja a seção Troubleshooting.
+
+## 🌐 Configuração de domínio (DNS) — ~13 min
+
+_Aponte \`meuapp.com\` para o IP do servidor — necessário antes do SSL._
+
+- [ ] Adicionei registro A: \`@ → SEU_IP\` (apontando \`meuapp.com\`)
+      ⏱ 2 min · 📊 médio
+
+- [ ] Adicionei registro A: \`www → SEU_IP\` (apontando \`www.meuapp.com\`)
+      ⏱ 1 min · 📊 médio
+
+- [ ] \`ping meuapp.com\` no meu computador retorna o IP do servidor
+      ⏱ 10 min · 📊 médio
+      > ⚠️ A propagação DNS leva de 5 minutos a 24 horas. Não passe para o SSL antes disso.
+
+## 🔒 HTTPS (SSL gratuito com Let's Encrypt) — ~8 min
+
+_Adicione o cadeado verde a \`https://meuapp.com\` — renova sozinho a cada 90 dias._
+
+- [ ] Instalei o Nginx (\`apt-get install -y nginx\`)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Criei \`/etc/nginx/sites-available/meuapp.com\` com proxy_pass para porta 80
+      ⏱ 3 min · 📊 médio
+
+- [ ] Ativei: \`ln -s ... && nginx -t && systemctl reload nginx\`
+      ⏱ 1 min · 📊 médio
+      > ⚠️ \`nginx -t\` precisa retornar \`syntax is ok\`. Se não retornar, revise o arquivo.
+
+- [ ] Instalei o Certbot (\`apt-get install -y certbot python3-certbot-nginx\`)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Gerei o certificado (\`certbot --nginx -d meuapp.com -d www.meuapp.com\`)
+      ⏱ 2 min · 📊 médio
+      > ⚠️ O DNS precisa já ter propagado. Se falhar com erro de DNS, volte ao passo anterior.
+
+## ✅ Pós-deploy — ~5 min
+
+_Confirme que a aplicação está no ar e funcionando ponta a ponta._
+
+- [ ] Acessei \`https://meuapp.com\` com cadeado verde
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Testei o fluxo principal da aplicação (login, navegação, ações críticas)
+      ⏱ 5 min · 📊 fácil
+      > ⚠️ Se você usa Supabase, teste explicitamente o login e uma operação de leitura/escrita.
+
+- [ ] Inspecionei \`docker compose logs --tail=200\` em busca de erros
+      ⏱ 2 min · 📊 fácil
+
+## 🆘 Domino o operacional
+
+_Garanta que você sabe operar a aplicação no dia a dia — logs, restart, updates._
+
+- [ ] Sei ver os logs: \`docker compose logs --tail=200\` _(opcional)_
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Sei reiniciar a aplicação: \`docker compose restart\` _(opcional)_
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Sei atualizar: novo \`scp\` dos arquivos + \`docker compose up -d --build\` _(opcional)_
+      ⏱ 2 min · 📊 médio
+
+- [ ] Sei onde está o \`DEPLOY.md\` (mesmo diretório deste arquivo) para consulta detalhada _(opcional)_
+      📊 fácil
+
+---
+
+_Esse checklist foi gerado automaticamente pelo \`lovable-migrate\` a partir do contexto do seu projeto. Regenerar: rode novamente com as mesmas (ou novas) flags._
+
+_Gerado em: <TIMESTAMP>_
+"
+`;
+
+exports[`CHECKLIST — Pipeline completo (supabase-project) > CHECKLIST.md corresponde ao snapshot (supabase) 1`] = `
+"# Checklist de Deploy — supabase-project
+
+Marque cada item conforme conclui. O \`DEPLOY.md\` neste mesmo diretório explica o **como** de cada comando.
+
+| Campo | Valor |
+|---|---|
+| Projeto | \`supabase-project\` |
+| Provedor | Hostinger VPS |
+| Domínio | \`meuapp.com\` |
+| Porta da aplicação | \`80\` |
+| Itens totais | 38 (33 obrigatórios) |
+| Tempo estimado | ~57 min |
+
+> ℹ️ **Como usar este checklist**  
+> Faça uma fase de cada vez, marcando os itens. Cada item tem o **tempo estimado** ao lado. Se algo der errado, consulte a seção **Troubleshooting rápido** no final ou abra o \`DEPLOY.md\`.
+
+## Progresso por fase
+
+| Fase | Itens | Tempo estimado |
+|---|---|---|
+| 🧰 Pré-deploy (no seu computador) | 5 | ~5 min |
+| 🖥 Setup do Hostinger VPS | 4 | ~5 min |
+| 🐳 Instalação do Docker | 4 | ~6 min |
+| 📦 Upload para Hostinger VPS | 3 | ~5 min |
+| 🔐 Variáveis de ambiente | 4 | ~4 min |
+| 🚀 Deploy da aplicação | 3 | ~6 min |
+| 🌐 Configuração de domínio (DNS) | 3 | ~13 min |
+| 🔒 HTTPS (SSL gratuito com Let's Encrypt) | 5 | ~8 min |
+| ✅ Pós-deploy | 3 | ~5 min |
+| 🆘 Domino o operacional | 4 | — |
+
+## 🧰 Pré-deploy (no seu computador) — ~5 min
+
+_Reúna tudo que você vai precisar antes de tocar no servidor._
+
+- [ ] Tenho a pasta \`output/supabase-project/\` gerada pelo lovable-migrate
+      📊 fácil
+
+- [ ] Tenho um VPS ativo (KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe))
+      📊 fácil
+
+- [ ] Anotei o IP público do servidor
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Sem o IP, você não consegue acessar o servidor.
+
+- [ ] Já comprei o domínio \`meuapp.com\` _(opcional)_
+      📊 fácil
+
+- [ ] Tenho as chaves do Supabase em mãos (Project Settings → API)
+      ⏱ 2 min · 📊 fácil
+      > ⚠️ Você vai precisar de \`SUPABASE_URL\` e \`SUPABASE_ANON_KEY\` no Passo 5.
+
+## 🖥 Setup do Hostinger VPS — ~5 min
+
+_Acesse o servidor e confirme que está pronto para receber a aplicação._
+
+- [ ] Acessei o painel hPanel
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Confirmei que o sistema operacional é Ubuntu 22.04 LTS
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Outras distribuições funcionam, mas os comandos deste guia foram testados nesse SO.
+
+- [ ] Abri o terminal SSH (terminal de navegador ou ssh local)
+      ⏱ 2 min · 📊 fácil
+
+- [ ] Estou logado como \`root\` no servidor
+      ⏱ 1 min · 📊 fácil
+
+## 🐳 Instalação do Docker — ~6 min
+
+_Instale o Docker e o Compose no servidor — é o que vai rodar sua aplicação._
+
+- [ ] Atualizei o sistema (\`apt-get update && apt-get upgrade -y\`)
+      ⏱ 2 min · 📊 fácil
+
+- [ ] Instalei o Docker (\`curl -fsSL https://get.docker.com | sh\`)
+      ⏱ 2 min · 📊 fácil
+
+- [ ] Instalei o plugin Compose (\`apt-get install -y docker-compose-plugin\`)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Validei: \`docker --version\` e \`docker compose version\` retornam versões
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Se algum comando retornar "not found", repita a instalação anterior.
+
+## 📦 Upload para Hostinger VPS — ~5 min
+
+_Transfira os artefatos gerados em \`output/supabase-project/\` para o servidor._
+
+- [ ] Criei \`/opt/app\` no servidor
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Enviei os arquivos: \`scp -r docker/ .env root@SEU_IP:/opt/app/\`
+      ⏱ 3 min · 📊 médio
+      > ⚠️ Rode esse comando no terminal do **seu computador**, não no terminal SSH do servidor.
+
+- [ ] Confirmei no servidor: \`ls /opt/app/docker\` mostra os arquivos
+      ⏱ 1 min · 📊 fácil
+
+## 🔐 Variáveis de ambiente — ~4 min
+
+_Configure as 2 variável(is) detectadas. Os valores Supabase estão em Project Settings → API._
+
+- [ ] Criei o arquivo \`.env\` em \`/opt/app\` (no servidor)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Preenchi \`VITE_SUPABASE_ANON_KEY=...\`
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Preenchi \`VITE_SUPABASE_URL=...\`
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Salvei o arquivo (\`Ctrl+X\`, \`Y\`, \`Enter\` no nano)
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Esse arquivo contém segredos — nunca compartilhe em público.
+
+## 🚀 Deploy da aplicação — ~6 min
+
+_Suba os containers e confirme que a aplicação responde no IP do servidor._
+
+- [ ] Rodei \`docker compose up -d --build\` em \`/opt/app/docker\`
+      ⏱ 4 min · 📊 médio
+      > ⚠️ A primeira execução demora — está baixando a imagem base e construindo a sua.
+
+- [ ] Verifiquei \`docker compose ps\` — container com status \`running\`
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Acessei \`http://SEU_IP:80\` no navegador — a aplicação carregou
+      ⏱ 1 min · 📊 fácil
+      > ⚠️ Não abriu? Rode \`docker compose logs --tail=100\` e veja a seção Troubleshooting.
+
+## 🌐 Configuração de domínio (DNS) — ~13 min
+
+_Aponte \`meuapp.com\` para o IP do servidor — necessário antes do SSL._
+
+- [ ] Adicionei registro A: \`@ → SEU_IP\` (apontando \`meuapp.com\`)
+      ⏱ 2 min · 📊 médio
+
+- [ ] Adicionei registro A: \`www → SEU_IP\` (apontando \`www.meuapp.com\`)
+      ⏱ 1 min · 📊 médio
+
+- [ ] \`ping meuapp.com\` no meu computador retorna o IP do servidor
+      ⏱ 10 min · 📊 médio
+      > ⚠️ A propagação DNS leva de 5 minutos a 24 horas. Não passe para o SSL antes disso.
+
+## 🔒 HTTPS (SSL gratuito com Let's Encrypt) — ~8 min
+
+_Adicione o cadeado verde a \`https://meuapp.com\` — renova sozinho a cada 90 dias._
+
+- [ ] Instalei o Nginx (\`apt-get install -y nginx\`)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Criei \`/etc/nginx/sites-available/meuapp.com\` com proxy_pass para porta 80
+      ⏱ 3 min · 📊 médio
+
+- [ ] Ativei: \`ln -s ... && nginx -t && systemctl reload nginx\`
+      ⏱ 1 min · 📊 médio
+      > ⚠️ \`nginx -t\` precisa retornar \`syntax is ok\`. Se não retornar, revise o arquivo.
+
+- [ ] Instalei o Certbot (\`apt-get install -y certbot python3-certbot-nginx\`)
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Gerei o certificado (\`certbot --nginx -d meuapp.com -d www.meuapp.com\`)
+      ⏱ 2 min · 📊 médio
+      > ⚠️ O DNS precisa já ter propagado. Se falhar com erro de DNS, volte ao passo anterior.
+
+## ✅ Pós-deploy — ~5 min
+
+_Confirme que a aplicação está no ar e funcionando ponta a ponta._
+
+- [ ] Acessei \`https://meuapp.com\` com cadeado verde
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Testei o fluxo principal da aplicação (login, navegação, ações críticas)
+      ⏱ 5 min · 📊 fácil
+      > ⚠️ Se você usa Supabase, teste explicitamente o login e uma operação de leitura/escrita.
+
+- [ ] Inspecionei \`docker compose logs --tail=200\` em busca de erros
+      ⏱ 2 min · 📊 fácil
+
+## 🆘 Domino o operacional
+
+_Garanta que você sabe operar a aplicação no dia a dia — logs, restart, updates._
+
+- [ ] Sei ver os logs: \`docker compose logs --tail=200\` _(opcional)_
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Sei reiniciar a aplicação: \`docker compose restart\` _(opcional)_
+      ⏱ 1 min · 📊 fácil
+
+- [ ] Sei atualizar: novo \`scp\` dos arquivos + \`docker compose up -d --build\` _(opcional)_
+      ⏱ 2 min · 📊 médio
+
+- [ ] Sei onde está o \`DEPLOY.md\` (mesmo diretório deste arquivo) para consulta detalhada _(opcional)_
+      📊 fácil
+
+---
+
+_Esse checklist foi gerado automaticamente pelo \`lovable-migrate\` a partir do contexto do seu projeto. Regenerar: rode novamente com as mesmas (ou novas) flags._
+
+_Gerado em: <TIMESTAMP>_
+"
+`;

@@ -1,475 +1,356 @@
 # HANDOFF.md — lovable-migrate
 
-> Data: 2026-05-14 | Versão: 0.3.3 | Branch: main
+> **Data da sessão:** 2026-05-16
+> **Branch:** `main` (sem commits desta sessão — tudo no working tree)
+> **Último commit upstream:** `94dd256 chore: bump version to 0.3.5`
 >
 > Este documento é o ponto de retomada. Leia do início ao fim antes de escrever qualquer código.
+> Substitui handoff anterior (0.3.3 / 2026-05-14).
 
 ---
 
-## 1. Estado atual em uma frase
+## 1. Estado atual do projeto
 
-O `lovable-migrate` é uma engine CLI de migração para projetos Lovable.dev, com pipeline completo (analyze → cicd), API HTTP, TUI interativa, e um módulo `sync-users` de reconexão automática de user_ids entre projetos Supabase — implementado, testado com mocks e hardened para uso em produção, mas ainda sem validação E2E real com Supabase vivo.
+### Resumo executivo
+- **Engine `lovable-migrate` versão 0.3.5** (em `package.json` — não foi bumpada nesta sessão).
+- **Fase 1 do Deploy Assistido** implementada e funcional.
+- Novo módulo `src/guide/` produz dois artefatos humanos: `DEPLOY.md` + `CHECKLIST.md`.
+- Pipeline antigo intocado — zero quebra de testes ou contratos.
+- **432 testes passando em 30 arquivos** (eram 400 antes da sessão; +32 novos).
+- **Toda a implementação está no working tree, ainda não comitada.**
+
+### Pipeline atual
+```
+resolveSource → analyze → plan → validate → migrate → deploy
+  → execute → runtime → remote → cicd → [NOVO: guide]
+```
+
+O módulo `guide` consome `ctx.analysis`, `ctx.plan` e (quando disponível) `ctx.deploy.docker.exposedPort`. Não tem dependência de runtime/execute/remote — pode rodar logo após `deploy`.
 
 ---
 
-## 2. O que foi feito hoje (2026-05-14)
+## 2. O que foi implementado nesta sessão
 
-### Commits do dia (4 commits, em ordem)
+### Etapa A — Estratégia e arquitetura (resposta de análise inicial)
+Resposta longa entregada com:
+- Diagnóstico do gap real entre `remote/dry-run.md` e o usuário não técnico.
+- Proposta `deploy-guide` como gerador de pacote humano (NÃO automação SSH).
+- Roadmap em 5 fases (MVP → automação total).
+- Quick wins, riscos, diferenciais competitivos.
+- O que **NÃO** fazer agora.
 
-| Hash | Mensagem |
-|---|---|
-| `ade465b` | `feat(sync): user-id remapping between Supabase projects` — sync-users v1 |
-| `ad585b7` | `feat(sync): visual wizard + confidence scoring + HTML report` — sync-ui v2 |
-| `7916961` | `fix(sync): production hardening — critical bug fixes + comprehensive test suite` — v3 |
-| `ee8f5f0` | `fix(sync): production hardening — timeouts, retry, concurrency, backup safety, key masking` — v4 |
+### Etapa B — Fase 1.A: módulo `src/guide/` + DEPLOY.md generator
+- `types.ts`, `registry.ts`, `index.ts` + 3 targets (Hostinger, Generic, fallback).
+- `tasks/deploy-doc-generator.ts` — DEPLOY.md em 9 passos numerados, PT-BR, contextual.
+- Integração com `ProjectContext` (`withGuide`, campo opcional).
+- Comando CLI: `lovable-migrate guide <input> --target --domain --port --remote-path --admin-email`.
+- Renderer terminal + JSON.
+- 26 testes de integração.
 
-### Funcionalidades implementadas hoje
-
-**sync-users v1 (`ade465b`):**
-- Detecção automática de colunas `user_id` via OpenAPI do PostgREST
-- Matching de usuários por email entre dois projetos Supabase
-- Dry-run seguro sem escrita
-- Backup JSON antes de qualquer UPDATE
-- Rollback via backup
-- Updates em batch por usuário/coluna
-- Relatório terminal + HTML
-- CLI: `lovable-migrate sync-users [flags]`
-
-**sync-ui v2 (`ad585b7`):**
-- TUI wizard com 8 telas (Ink v3): Welcome → Connect → Discover → Preview → Confirm → Progress → Report → Error
-- Confidence scoring: 70 base + ±provider + ±dates (high/medium/suspicious)
-- HTML report dark-theme com stats, tabelas de usuários/colunas, erros, avisos
-- `buildUserSyncPlan()` + `executeSyncPlan()` separados (para wizard)
-- CLI: `lovable-migrate sync-ui`
-
-**Bug fixes críticos v3 (`7916961`):**
-- `createBackup()` virou síncrono — elimina bug de 1000-row limit do PostgREST
-- `.select('id')` → `.select(col.columnName)` — remove assumção de coluna 'id'
-- UUID validation em todo write — rejeita dados malformados antes de tocar o banco
-- `detectConflicts()` novo módulo — detecta new_uuid com dados antes de migrar
-- `validateSyncConfig()` novo módulo — URL format, JWT role decode, anon key detection
-- `validateCredentials()` — smoke test de conectividade com Supabase
-- 54 novos testes (unit + integration mocked)
-
-**Production hardening v4 (`ee8f5f0`):**
-- `src/sync/utils/retry.ts` — backoff exponencial + jitter, erros transitórios
-- `src/sync/utils/timeout.ts` — AbortController (fetch) + Promise.race (Supabase), DEFAULT_TIMEOUTS
-- `src/sync/utils/mask.ts` — redação de JWTs em mensagens de erro
-- `src/sync/executor/checkpoint.ts` — atomic save/load, buildCompletedSet, findLatestCheckpoint
-- `batch-updater`: worker-pool concorrente (padrão: 10 paralelo), timeout+retry por call
-- `backup-manager`: atomic write (tmp→rename), try/catch com ENOSPC detection, validação JSON no restore
-- `dry-runner`: todos os count queries em paralelo (O(1) RTT em vez de O(cols))
-- `conflict-detector`: Promise.all para counts — elimina N+1 sequencial
-- `email-matcher`: erro mid-pagination vira warning em vez de crash silencioso
-- `schema-inspector`: AbortController + retry no fetch do OpenAPI spec
-- `html-report`: `escapeHtml` completo (inclui `"` e `'`), limite 500 linhas, atomic write
-- `index.ts`: masking em todos os caminhos de erro, backup path em destaque antes de writes
-- `SyncOptions`: novos campos `timeout?`, `maxRetries?`, `concurrency?`, `resumeFrom?`
-- `TEST_PLAN.md`: 16 seções, 60+ cenários de teste, 12 known issues, critérios de produção
-- Benchmark: `src/sync/benchmark/runner.ts` — verifica 10x speedup com concurrency=10
+### Etapa C — Fase 1.B: CHECKLIST.md generator
+- Tipos novos: `ChecklistPhase`, `ChecklistItem`, `ChecklistSection`, `ChecklistArtifact`, `ChecklistDifficulty`.
+- `tasks/checklist-generator.ts` — 10 funções `buildXSection()` puras + renderização markdown isolada.
+- **Modelo estruturado** (não só string): preparado para TUI interativa e API HTTP futuras.
+- IDs estáveis por item (preparado para persistência de progresso).
+- 32 testes (unit + integração + 2 snapshots normalizados).
 
 ---
 
-## 3. Arquitetura atual
+## 3. Arquitetura criada
 
-### Pipeline principal (não-sync)
-
+### Estrutura do módulo
 ```
-resolveSource(input)
-  → source.load()         → ProjectFile[]
-  → createContext()       → ProjectContext           src/core/
-  → analyzeContext()      → + analysis               src/analyzer/
-  → planContext()         → + plan                   src/planner/
-  → validateContext()     → + validation             src/validator/
-  → migrateContext()      → + migration              src/migrator/
-  → deployContext()       → + deploy                 src/deploy/
-  → executeContext()      → + execution              src/executor/
-  → runContext()          → + runtime                src/runtime/
-  → prepareContext()      → + remote                 src/remote/
-  → renderer.render()                                src/output/
+src/guide/
+├── types.ts                          175 linhas
+├── registry.ts                        54 linhas    (GuideRegistry síncrono)
+├── index.ts                          194 linhas    (orquestrador + entry points)
+├── targets/
+│   ├── index.ts                       32 linhas    (resolveTargetProfile + fallback)
+│   ├── hostinger.ts                   35 linhas    (perfil hPanel + KVM)
+│   └── generic.ts                     33 linhas    (perfil neutro de fallback)
+└── tasks/
+    ├── deploy-doc-generator.ts       551 linhas    (9 buildStepN + helpers + render)
+    └── checklist-generator.ts        641 linhas    (10 buildXSection + renderItem/Section/Header/Footer)
 ```
 
-**Invariante absoluta:** `ProjectContext` é imutável — toda fase retorna `{ ...ctx, novoCampo }`.
+### Tipos principais (mental model)
+```typescript
+GuideOptions   → input do usuário (target, domain, port — todos opcionais)
+GuideConfig    → resolvido internamente (defaults aplicados, sempre completo)
+GuideTarget    → 'hostinger' | 'digitalocean' | 'aws-lightsail' | 'generic'
+GuideTargetProfile → struct de strings PT-BR por provedor (panel, ssh, notes)
 
-### Módulo sync (standalone, não usa ProjectContext)
-
-```
-SyncConfig (url + serviceKey × 2 + SyncOptions)
-  │
-  ├── Phase 0: validateSyncConfig()      [síncrono, sem rede]
-  │     └── validateCredentials()        [paralelo, com timeout]
-  │
-  ├── Phase 1: buildUserSyncPlan()
-  │     ├── fetchOpenApiSpec()           [timeout + retry + AbortController]
-  │     ├── findUserIdColumns()          [puro, sem I/O]
-  │     ├── matchUsersByEmail()          [paginação com warning mid-error]
-  │     ├── buildSyncPlan()             [counts paralelos + timeout]
-  │     └── detectConflicts()           [paralelo, N+1 eliminado]
-  │
-  └── Phase 2: executeSyncPlan()
-        ├── createBackup()              [síncrono, atomic write]
-        ├── saveCheckpoint()            [atomic, para resume]
-        ├── executeUpdates()            [worker-pool concorrente, timeout+retry]
-        └── restoreFromBackup()        [retry, validação JSON prévia]
+GuideState     → resultado da fase, anexado ao ProjectContext
+├── deployDoc: DeployDocArtifact          (DEPLOY.md)
+└── checklist: ChecklistArtifact          (CHECKLIST.md)
+    └── sections: ChecklistSection[]      (modelo estruturado, não só markdown)
+        └── items: ChecklistItem[]        (id estável, warning, scriptRef, time, difficulty)
 ```
 
-### Estrutura de arquivos do sync
+### Padrão de extensão (importante para retomada)
+Adicionar nova capacidade ao guide = **3 ações mecânicas**:
+1. Criar `src/guide/tasks/X-generator.ts` (função pura `(ctx, config) → Artifact`).
+2. Adicionar `readonly X: XArtifact` em `GuideState` (`src/guide/types.ts`).
+3. Registrar no registry em `index.ts` com `.register({ key: 'X', run: ... })`.
 
-```
-src/sync/
-├── index.ts                    # Orquestrador: buildUserSyncPlan + executeSyncPlan + syncUsers
-├── types.ts                    # Todos os tipos: UserMapping, SyncPlan, SyncResult, SyncOptions...
-├── benchmark/
-│   └── runner.ts               # Benchmark de performance (sequential vs concurrent)
-├── detection/
-│   ├── conflict-detector.ts    # detectConflicts() + describeConflict()
-│   └── user-id-detector.ts     # detectUserIdColumns() via schema-inspector
-├── executor/
-│   ├── backup-manager.ts       # createBackup() + restoreFromBackup() [hardened]
-│   ├── batch-updater.ts        # executeUpdates() [worker-pool, timeout, retry, checkpoint]
-│   ├── checkpoint.ts           # save/load/buildCompletedSet [atomic]
-│   └── dry-runner.ts           # buildSyncPlan() [paralelo]
-├── mapping/
-│   ├── confidence-scorer.ts    # scoreMatch() → {level, score, reasons}
-│   └── email-matcher.ts        # matchUsersByEmail() [paginação hardened]
-├── report/
-│   ├── html-report.ts          # generateHtmlReport() [atomic, escapeHtml completo, limite 500]
-│   └── sync-report.ts          # printSyncReport() [terminal]
-├── tui/
-│   ├── app.tsx                 # SyncApp (useReducer, 8 telas)
-│   ├── index.ts                # startSyncWizard()
-│   ├── hooks/
-│   │   ├── useSyncNav.ts       # goTo() / goToError()
-│   │   └── useSyncOp.ts        # discover() / execute() [sanitizeError, concurrency]
-│   ├── screens/                # 8 telas: Welcome, Connect, Discover, Preview, Confirm,
-│   │   └── *.tsx               #          Progress, Report, Error
-│   └── state/
-│       ├── reducer.ts          # syncWizardReducer + INITIAL_SYNC_SESSION
-│       └── types.ts            # SyncScreen (8 valores) + SyncWizardAction
-├── utils/
-│   ├── mask.ts                 # maskKey() + sanitizeMessage() + sanitizeError()
-│   ├── retry.ts                # withRetry() + isRetryable() + DEFAULT_RETRY
-│   └── timeout.ts              # withTimeout() + fetchWithTimeout() + DEFAULT_TIMEOUTS
-└── validation/
-    └── validate-config.ts      # validateSyncConfig() + validateCredentials()
-
-src/integrations/supabase/
-├── admin-client.ts             # createAdminClient()
-├── schema-inspector.ts         # fetchOpenApiSpec() + findUserIdColumns() [timeout hardened]
-└── types.ts                    # SupabaseConfig + OpenApiSpec
-```
+Zero alteração no orquestrador, CLI, ou pipeline.
 
 ---
 
-## 4. Fluxo sync-users (CLI)
+## 4. Decisões técnicas importantes
 
-```bash
-lovable-migrate sync-users \
-  --old-url https://<OLD>.supabase.co \
-  --old-key eyJhbGci... \
-  --new-url https://<NEW>.supabase.co \
-  --new-key eyJhbGci... \
-  [--dry-run] [--backup-dir ./backups] [--verbose]
-  [--timeout 30000] [--max-retries 3] [--concurrency 10]
-  [--extra-columns table.column] [--skip-tables t1,t2]
-```
-
-**Sequência interna:**
-1. `validateSyncConfig()` — verifica URL, JWT structure, JWT role (sem rede)
-2. `validateCredentials()` ×2 em paralelo — smoke test com timeout
-3. `fetchOpenApiSpec()` — busca schema PostgREST com timeout + retry
-4. `findUserIdColumns()` — identifica colunas alvo
-5. `matchUsersByEmail()` — lista usuários de ambos projetos em paralelo
-6. `buildSyncPlan()` — conta rows afetados em paralelo por coluna
-7. `detectConflicts()` — verifica new_uuid com dados existentes
-8. Se dry-run: retorna plano + HTML report
-9. `createBackup()` — JSON atômico antes de qualquer write
-10. Exibe path do backup em destaque no terminal
-11. `saveCheckpoint()` — arquivo de checkpoint inicializado
-12. `executeUpdates()` — worker-pool com concurrency=10, timeout, retry, checkpoint
-13. Se erros: `restoreFromBackup()` automático
-14. `generateHtmlReport()` — HTML atômico em backupDir
-
----
-
-## 5. Fluxo sync-ui (TUI wizard)
-
-```bash
-lovable-migrate sync-ui
-```
-
-**8 telas em sequência:**
-```
-SyncWelcome  →  SyncConnect (Tab entre campos)
-             →  SyncDiscover (spinner + logs ao vivo)
-             →  SyncPreview (confidence badges, conflitos)
-             →  SyncConfirm (revisão de suspicious matches)
-             →  SyncProgress (log ao vivo de cada UPDATE)
-             →  SyncReport (resumo final + path do backup)
-```
-
-**Estado global:** `useReducer(syncWizardReducer, INITIAL_SYNC_SESSION)` em `SyncApp`
-
-**Comunicação:** `useSyncOp.discover()` chama `buildUserSyncPlan()`, `useSyncOp.execute()` chama `executeSyncPlan()`. Telas nunca chamam engine diretamente.
-
----
-
-## 6. Hardenings implementados (resumo técnico)
-
-| Hardening | Antes | Depois |
-|---|---|---|
-| Timeouts | Nenhum — hang infinito | DEFAULT_TIMEOUTS por tipo (15–30s) + AbortController no fetch |
-| Retry | Nenhum | Backoff exponencial + jitter, máx 3 tentativas, erros transitórios |
-| Concorrência | 1 UPDATE de cada vez, O(n×m) | Worker-pool, padrão 10 paralelo, configurável |
-| Backup write | `writeFileSync` sem catch | `tmp → rename` atômico, try/catch ENOSPC, erro humanizado |
-| Restore | `JSON.parse` direto | try/catch + validação de schema por entrada antes de tocar BD |
-| Dry-runner | For sequencial por coluna | `Promise.all` paralelo — O(1) RTT |
-| Conflict detection | N+1 sequencial | `Promise.all` paralelo dos counts |
-| Paginação usuarios | Erro mid-page = crash | Erro mid-page = warning + retorna parcial |
-| Key masking | Service key em clear em erros | `sanitizeMessage()` redige JWTs via regex |
-| escapeHtml | Faltava `"` e `'` | Completo — protege atributos HTML |
-| HTML report | Ilimitado — 10k linhas | Limite 500 + nota de truncamento + atomic write |
-| Checkpoint | Inexistente | `checkpoint.ts` — resume após crash, atomic save |
-| Error casting | `(err as Error).message` | `toErrorMessage(unknown)` type-safe |
-
----
-
-## 7. Benchmarks
-
-Simulados com 20ms de latência por chamada, concurrency=10:
-
-| Cenário | Antes (sequencial) | Depois (10x paralelo) | Speedup |
+| # | Decisão | Por quê | Onde |
 |---|---|---|---|
-| 100 users × 5 cols | 15.5s | 1.6s | **10x** |
-| 1.000 users × 5 cols | 2.6 min | 15.6s | **10x** |
-| 1.000 users × 10 cols | 5.2 min | 31.2s | **10x** |
-| 10.000 users × 5 cols | 26 min | 2.6 min | **10x** |
-
-Dry-run counts: sempre O(1) rodada paralela independente do número de usuários.
-Conflict detection: era O(N) sequencial, agora O(1) rodada paralela.
+| 1 | **Registry síncrono** (não async) | Toda task é pure template — sem I/O exceto `writeGeneratedFiles` no final | `src/guide/registry.ts` |
+| 2 | **`GuideOptions` × `GuideConfig` separados** | Usuário passa o mínimo, defaults aplicados antes do registry. Tasks só veem config completa | `src/guide/index.ts:resolveGuideConfig` |
+| 3 | **Targets como dados (não código)** | Adicionar provedor = 1 arquivo + 1 linha. Targets desconhecidos caem em `generic` (fallback seguro) | `src/guide/targets/index.ts` |
+| 4 | **Builders por seção como funções puras** | Testáveis isoladamente, reordenáveis, reaproveitáveis em outros artefatos | `tasks/*-generator.ts` |
+| 5 | **Modelo estruturado para CHECKLIST** | Não é só markdown — `ChecklistSection[]` alimenta TUI, JSON da API, scripts futuros | `tasks/checklist-generator.ts` |
+| 6 | **IDs estáveis em itens do checklist** | Preparado para TUI interativa salvar "já marquei `ssl.certbot-run`" | Cada `item('id.x', ...)` |
+| 7 | **`scriptRef?` já no tipo de item** | Quando gerar scripts bash, o checklist referencia diretamente o `.sh` correspondente | `ChecklistItem.scriptRef` |
+| 8 | **Aliases no boundary público** | `ChecklistItem` colidia com o planner — aliasamos só em `src/index.ts` (`GuideChecklistItem`) | `src/index.ts` |
+| 9 | **`estimatedTotalMinutes = max(deployDoc, checklist)`** | `deployDoc` é tempo de leitura, `checklist` é tempo de execução — somar dupla-contaria | `src/guide/index.ts` |
+| 10 | **`normalizeOutput` nos snapshots** | Timestamp do rodapé varia. Mesmo padrão dos snapshots de `deploy`, `remote`, etc. | `test/integration/guide-checklist.test.ts` |
+| 11 | **`__sectionBuilders` exportado** | Testes unitários por seção sem rodar pipeline inteiro (~ms vs. segundos) | `tasks/checklist-generator.ts` |
+| 12 | **Imutabilidade preservada** | `withGuide()` retorna novo ctx via spread. Teste explícito valida | `src/core/index.ts` |
 
 ---
 
-## 8. Testes
+## 5. Arquivos novos / modificados
 
-**26 arquivos de teste, 336 testes, 100% passando.**
+### Novos (não comitados)
+```
+src/guide/                                    8 arquivos, ~1750 linhas TS
+├── types.ts                                  175
+├── registry.ts                                54
+├── index.ts                                  194
+├── targets/index.ts                           32
+├── targets/hostinger.ts                       35
+├── targets/generic.ts                         33
+├── tasks/deploy-doc-generator.ts             551
+└── tasks/checklist-generator.ts              641
 
-| Diretório | Arquivo | Testes | O que cobre |
+test/integration/guide.test.ts                328 linhas (26 testes do DEPLOY.md)
+test/integration/guide-checklist.test.ts      368 linhas (32 testes do CHECKLIST.md)
+test/snapshots/guide-checklist.snap            15 KB (2 snapshots normalizados)
+
+HANDOFF.md                                    (este arquivo)
+```
+
+### Modificados (não comitados)
+```
+src/cli.ts                  +76 linhas   → comando `guide` com flags --target --domain --port --remote-path --admin-email
+src/core/types.ts           +4  linhas   → readonly guide?: GuideState
+src/core/index.ts           +6  linhas   → withGuide()
+src/index.ts                +23 linhas   → exports + aliases (GuideChecklistItem, etc.)
+src/output/terminal.ts      +37 linhas   → renderGuide() com contagem de itens
+src/output/json.ts          +1  linha    → serializa ctx.guide
+test/helpers/pipeline.ts    +19 linhas   → runGuidePipeline()
+```
+
+### Não tocados (intencionalmente)
+- TUI (`src/tui/`) — Fase 2.
+- Server (`src/server/`) — Fase 2.
+- Validator/Migrator/Deploy/Executor/Runtime/Remote/Cicd — sem mudanças.
+
+---
+
+## 6. Testes executados nesta sessão
+
+```bash
+npm run typecheck                                         # ✅ passa (limpo)
+npm run typecheck:test                                    # ✅ passa (limpo)
+npx vitest run test/integration/guide.test.ts             # ✅ 26 passed
+npx vitest run test/integration/guide-checklist.test.ts   # ✅ 32 passed
+npm test                                                   # ✅ 432 passed em 30 files (~6.6s)
+```
+
+### Cobertura nova (58 testes)
+- **Targets** (5) — resolução, fallback, instruções específicas.
+- **Pré-condições** (2) — throw quando falta `analysis`/`plan`.
+- **Pipeline react-vite + Hostinger** (12 testes do DEPLOY) — framework, domínio, comandos.
+- **Pipeline supabase-project** (2) — hint de Supabase, projectName.
+- **Target generic** (1) — conteúdo neutro.
+- **Normalização de domínio** (4) — protocolo, slash, null, callout.
+- **Imutabilidade** (1) — ctx original não muta.
+- **Builders de seção do checklist** (15) — cada `buildXSection()` isoladamente.
+- **Composição do checklist** (6) — totais, ordem, checkboxes, tabela.
+- **Pipeline + snapshot do checklist** (6 em react-vite, 3 em supabase, 2 sem domínio).
+
+### Validação manual feita
+```bash
+npm run dev -- guide ./test/fixtures/supabase-project --target hostinger --domain meuapp.com --output ./tmp-checklist
+# → Output: 38 itens (33 obrigatórios), ~57 min
+# → DEPLOY.md detectou Supabase e listou VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+# → CHECKLIST.md inclui as 10 seções com ícones, checkboxes, warnings, tempo estimado
+```
+
+---
+
+## 7. Estado dos testes
+
+```
+Test Files  30 passed (30)
+Tests       432 passed (432)
+Duration    ~6.6s
+```
+
+Sem flakes, sem warnings de TypeScript, sem snapshots desatualizados.
+
+---
+
+## 8. Próximos passos recomendados
+
+### Prioridade 1 — Quick wins da Fase 1.x (1–2 dias cada)
+1. **`tasks/script-generator.ts`** — Gera `01-setup-vps.sh` ... `06-health-check.sh` a partir das seções do checklist. Os comandos já estão nos labels — extrair via parsing dos blocos `` ` ``. Popular `ChecklistItem.scriptRef` ao mesmo tempo.
+2. **`tasks/nginx-generator.ts`** — Gera `nginx-app.conf` e `nginx-ssl-redirect.conf` reais em `deployment-guide/config/`. Hoje o conteúdo está hardcoded no DEPLOY.md.
+3. **Atualizar `DEPLOY.md` para referenciar scripts** — Após (1), substituir blocos `bash` longos por "execute `01-setup-vps.sh`" + nota explicativa.
+
+### Prioridade 2 — Cobertura e qualidade
+4. **Snapshot test do DEPLOY.md** — Falta no `test/integration/guide.test.ts`. Padrão já existe no `guide-checklist.test.ts` (`normalizeOutput` + `toMatchSnapshot`).
+5. **Atualizar `docs/registries.md`** — Documentar o `GuideRegistry`, padrões e extensão.
+6. **Atualizar `CLAUDE.md`** — Adicionar `src/guide/` à tabela de módulos + na seção "Roadmap de fases" (Guide v1).
+
+### Prioridade 3 — UX e diferenciação (Fase 2)
+7. **TUI: tela `deploy-target`** — Após `Summary`, perguntar provedor + domínio + chamar `guideContext()`. Aproveita o modelo do checklist.
+8. **TUI: tela `deploy-checklist`** — Renderizar `ChecklistSection[]` com navegação por seção e checkbox interativo. Estado persistido localmente em `~/.lovable-migrate/progress/<projectName>.json`.
+9. **Perfis dedicados** — `targets/digitalocean.ts` e `targets/aws-lightsail.ts` (hoje caem em `generic`).
+
+### Prioridade 4 — Release
+10. **Estratégia de commit** — Sugestão: 2 commits separados para preservar histórico granular:
+    - `feat(guide): add DEPLOY.md generator for assisted deploys`
+    - `feat(guide): add CHECKLIST.md generator with operational checklist`
+    - Ou 1 commit único: `feat(guide): Deploy Assistido v1 (DEPLOY.md + CHECKLIST.md)`.
+11. **Bump para 0.4.0** quando scripts + nginx estiverem prontos — caracteriza release "Deploy Assistido v1 completo".
+
+---
+
+## 9. Riscos conhecidos
+
+| Risco | Probabilidade | Impacto | Mitigação |
 |---|---|---|---|
-| `test/sync/unit/` | `confidence-scorer.test.ts` | 8 | scoreMatch(), nível, clamping |
-| `test/sync/unit/` | `schema-inspector.test.ts` | 7 | findUserIdColumns(), Swagger 2.0 e OAS 3.0 |
-| `test/sync/unit/` | `validate-config.test.ts` | 9 | URL, JWT, role, same-project |
-| `test/sync/integration/` | `email-matcher.test.ts` | 8 | match, skip, paginação, case |
-| `test/sync/integration/` | `backup-rollback.test.ts` | 9 | createBackup, restoreFromBackup |
-| `test/sync/integration/` | `conflict-detector.test.ts` | 5 | detectConflicts, describeConflict |
-| `test/sync/integration/` | `batch-updater.test.ts` | 7 | executeUpdates, UUID, concorrência |
-| Outros 19 arquivos | pipeline, TUI, server... | 283 | Pipeline completo, API, CLI |
+| **Scripts bash gerados (futuro) terem bugs em distros não-Ubuntu** | Média | Médio | Fixar target Ubuntu 22.04 LTS no MVP; warnings explícitos no DEPLOY.md |
+| **Mudanças no painel Hostinger quebram instruções** | Baixa | Médio | Strings ficam isoladas em `targets/hostinger.ts`. Atualização = 1 arquivo |
+| **Usuário rodar scripts fora de ordem** | Média | Alto (no futuro) | Quando implementar scripts, adicionar verificação de pré-condição no header de cada `.sh` |
+| **Nginx conf não funciona para subdomínios / path-based routing** | Média | Médio | Hoje só suportamos domínio raiz + www. Documentar limitação. Future: detector + template alternativo |
+| **Certbot falha por DNS não propagado** | Alta | Baixo (usuário) | Warning explícito no checklist (item `ssl.certbot-run`) + seção troubleshooting do DEPLOY |
+| **Snapshots quebrarem em sistemas com locale diferente** | Baixa | Baixo | Strings PT-BR são hard-coded; sem dependência de locale |
+| **`ChecklistItem` aliased pode confundir consumidores externos** | Baixa | Baixo | Aliases documentados em `src/index.ts` com comentário explicando o porquê |
+| **Domínio com Unicode (IDN) não é tratado** | Muito baixa | Baixo | `normalizeDomain` apenas strip protocolo/slash. Adicionar idn-uts46 quando demanda surgir |
 
-**Comandos:**
-```bash
-npm test                  # suite completa
-npm run typecheck         # src/ (0 erros)
-npm run typecheck:test    # test/ (0 erros)
-npm run test:watch        # modo interativo
-npm run test:snapshots    # atualiza snapshots
+---
+
+## 10. TODOs imediatos (ao retomar)
+
+```
+[ ] Decidir estratégia de commit (1 monolítico ou 2 commits)
+[ ] git add src/guide/ src/cli.ts src/core/ src/index.ts src/output/ \
+            test/helpers/pipeline.ts \
+            test/integration/guide*.ts \
+            test/snapshots/guide-checklist.snap
+[ ] Considerar adicionar HANDOFF.md ao .gitignore OU mover para docs/handoffs/
+[ ] Implementar tasks/script-generator.ts (próximo high-ROI)
+[ ] Implementar tasks/nginx-generator.ts (depois do script-generator)
+[ ] Adicionar snapshot test do DEPLOY.md (padrão existente no checklist test)
+[ ] Atualizar docs/registries.md com seção do GuideRegistry
+[ ] Atualizar CLAUDE.md (tabela de módulos + roadmap de fases)
+[ ] [opcional] Bump 0.4.0-alpha se quiser publicar preview
 ```
 
 ---
 
-## 9. Pendências restantes (abertas)
+## 11. Comandos úteis para retomar amanhã
 
-### Bloqueadores de produção comercial
+### Setup e validação rápida
+```powershell
+# Verificar estado
+git status -s
+npm run typecheck
+npm run typecheck:test
+npm test                     # esperar: 432 passed em 30 files
 
-| ID | Pendência | Esforço estimado |
-|---|---|---|
-| P1 | **Validação E2E real** com Supabase vivo — nenhum teste tocou banco real ainda | 1 dia + Supabase accounts |
-| P2 | **TUI: persistência de sessão** — fechar terminal durante execução perde path do backup | 1 dia |
-| P3 | **Idempotência documentada** — segunda execução após migração parcial sem aviso | 2h |
-| P4 | **Rate limiting do Supabase** — 429 retried mas sem backpressure consciente | 4h |
-
-### Melhorias de UX/segurança (não bloqueadores)
-
-| ID | Pendência | Esforço estimado |
-|---|---|---|
-| M1 | Input masking da service key na TUI (Ink v3 não tem campo tipo password nativo) | 1 dia |
-| M2 | `--resume` como flag de CLI (hoje só via `SyncOptions.resumeFrom`) | 2h |
-| M3 | Lock file para evitar duas instâncias do sync rodando simultaneamente | 4h |
-| M4 | Logs estruturados (JSON) para `--output-format json` | 4h |
-| M5 | Limite configurável de usuários (`--max-users`) com warning antes de atingir | 2h |
-| M6 | Segunda tentativa de rollback se o primeiro falhar parcialmente | 4h |
-
----
-
-## 10. Riscos conhecidos ainda abertos
-
-| ID | Risco | Severidade | Mitigação atual |
-|---|---|---|---|
-| KI-09 | TUI sem persistência — crash = usuário sem path do backup | MÉDIO | Backup path exibido no terminal antes de executar |
-| KI-12 | Segunda execução após migração parcial sem aviso de idempotência | MÉDIO | Documentado em TEST_PLAN.md seção PM-02 |
-| R1 | Supabase rate limit (429) — retried mas sem controle de concorrência adaptativo | BAIXO | Retry implementado, concurrency configurável |
-| R2 | Tabelas com FK — ordem de atualização não controlada (pode violar FK temporariamente) | BAIXO | Documentado em TEST_PLAN.md seção CT-03 |
-| R3 | Backup JSON em texto claro — contém UUIDs legíveis | INFORMATIVO | UUIDs não são credenciais; service keys nunca aparecem no backup |
-
----
-
-## 11. Próximos passos recomendados (em ordem de prioridade)
-
-### Prioridade 1 — Validação E2E real (próxima sessão principal)
-
-```bash
-# 1. Criar dois projetos Supabase de teste
-# 2. Executar o checklist do TEST_PLAN.md seção 14
-# 3. Começar por ST-01 a ST-05 (smoke tests)
-# 4. Executar E2E-01 (1 usuário, 1 tabela)
-# 5. Executar RB-01 (rollback após migração)
-# 6. Registrar resultados no TEST_PLAN.md
+# Testes só do módulo guide
+npx vitest run test/integration/guide.test.ts test/integration/guide-checklist.test.ts
 ```
 
-**Credenciais necessárias:** duas service_role keys de projetos Supabase distintos.
+### Gerar pacote real para inspeção visual
+```powershell
+# DEPLOY.md + CHECKLIST.md (target Hostinger, com domínio)
+npm run dev -- guide ./test/fixtures/supabase-project `
+  --target hostinger `
+  --domain meuapp.com `
+  --output ./tmp-out
 
-### Prioridade 2 — TUI: persistência de sessão (KI-09)
+# Inspeção
+code ./tmp-out/deployment-guide/DEPLOY.md
+code ./tmp-out/deployment-guide/CHECKLIST.md
 
-Salvar `{ backupFile, checkpointFile }` em `~/.lovable-migrate/sync-session.json` ao iniciar execução. Na tela `SyncReport`, exibir instrução explícita de rollback caso o terminal feche.
-
-### Prioridade 3 — Idempotência (KI-12)
-
-Em `buildUserSyncPlan`, se `detectConflicts` detectar que new_uuid já tem rows em TODAS as colunas alvo, emitir aviso "migração já parece ter sido executada — use `--rollback` ou confirme com `--force`".
-
-### Prioridade 4 — CLI `--resume` flag
-
-Expor `SyncOptions.resumeFrom` como flag `--resume <checkpoint-file>` em `sync-users`. Já existe a lógica em `executeSyncPlan` — só falta o parsing no CLI.
-
-### Prioridade 5 — Release v0.4.0
-
-Após E2E validado, bumpar para v0.4.0 e fazer release. O CI está funcionando (release.yml com `npm publish --access public`).
-
----
-
-## 12. Melhorias futuras opcionais (backlog)
-
-- **Suporte a `--extra-columns` na TUI** — hoje hardcoded em `useSyncOp`
-- **Relatório de auditoria por usuário** — quantas linhas foram migradas por email
-- **Suporte a múltiplos projetos** — migrar de múltiplas fontes para um novo projeto
-- **Dry-run incremental** — re-executar discovery sem resetar o wizard
-- **Progress bar real na TUI** — hoje é log ao vivo; poderia ser barra de progresso com ETA
-- **Integração com Supabase CLI** — `supabase db dump` como alternativa ao backup JSON
-- **Webhook notify** — notificar endpoint após migração completa (para CI/CD)
-
----
-
-## 13. Snapshot técnico atual
-
+# Limpeza
+Remove-Item -Recurse -Force ./tmp-out
 ```
-lovable-migrate v0.3.3
-─────────────────────────────────────────────────────────────────────
-Código:         191 arquivos TypeScript/TSX em src/
-Testes:         22 arquivos de teste, 336 testes, 100% passando
-TypeScript:     0 erros (src/ e test/)
-npm:            publicado — https://www.npmjs.com/package/lovable-migrate
-Versões npm:    0.3.0, 0.3.3 (0.3.1, 0.3.2 nunca publicados corretamente)
-Node:           >= 18.x necessário (AbortSignal, fetch nativo)
-Dependências:   @supabase/supabase-js ^2.45, Ink v3.2.0, Fastify, Commander
-─────────────────────────────────────────────────────────────────────
-Fases pipeline: 11/11 implementadas (analyze→cicd→execute→runtime→remote→sync)
-API HTTP:       Fastify em src/server/ — thin layer, sem lógica de domínio
-TUI:            Ink v3.2.0, React 17 — 8 telas do wizard sync
-sync-users:     4 versões (v1→v4), hardened, testado com mocks
-─────────────────────────────────────────────────────────────────────
-O QUE ESTÁ PRONTO PARA PRODUÇÃO:
-  ✅ Pipeline completo de análise/migração/deploy
-  ✅ API HTTP /analyze, /plan, /validate, /migrate, /deploy, /sync, /remote
-  ✅ CLI com todos os comandos
-  ✅ sync-users: validação, discovery, backup, rollback, checkpoint
-  ✅ sync-ui: wizard TUI completo
-  ✅ Timeouts, retry, concorrência, key masking
-  ✅ Testes unitários e de integração (mocked)
-  ✅ TEST_PLAN.md com 60+ cenários de validação
-  ✅ Release pipeline (GitHub Actions → npm publish)
 
-O QUE AINDA NÃO ESTÁ PRONTO:
-  ❌ Validação E2E com Supabase real (nenhum teste tocou banco real)
-  ❌ TUI sem persistência de sessão (crash perde contexto)
-  ❌ Idempotência não documentada no código (só em TEST_PLAN.md)
-  ❌ CLI --resume flag não exposta (lógica existe, parsing não)
-  ❌ Input masking de service key na TUI
+### Comparar variações
+```powershell
+npm run dev -- guide ./test/fixtures/react-vite --target hostinger --output ./tmp1
+npm run dev -- guide ./test/fixtures/react-vite --target generic   --output ./tmp2
+npm run dev -- guide ./test/fixtures/react-vite --target hostinger --domain x.com --output ./tmp3
+```
+
+### Atualizar snapshot (se mudar layout do CHECKLIST)
+```powershell
+npm run test:snapshots
+```
+
+### Build e dry-run de publicação (não tocar — só validar)
+```powershell
+npm run build
+npm pack --dry-run
+```
+
+### Continuar implementação (script generator)
+```
+Local: src/guide/tasks/script-generator.ts
+Padrão a seguir:
+  1. Função pura por script: build01SetupVps(ctx, config): GeneratedScript
+  2. Renderização: renderBashScript(script): string
+  3. Entry point: generateScripts(ctx, config): BashScriptsArtifact
+  4. Registry: .register({ key: 'scripts', run: ({ ctx, config }) => generateScripts(ctx, config) })
+  5. Adicionar campo `scripts: BashScriptsArtifact` em GuideState
+  6. Atualizar collectAllFiles em src/guide/index.ts
+```
+
+### Wizards interativos (não inclui guide ainda)
+```powershell
+npm run dev -- ui            # wizard atual
+npm run dev -- demo          # projeto demo embutido
 ```
 
 ---
 
-## 14. Como retomar
+## 12. Pontos de atenção para a próxima sessão
 
-### Setup rápido
-
-```bash
-git clone <repo>
-cd lovable-migrate
-npm install
-npm run typecheck        # deve mostrar: (saída vazia) = 0 erros
-npm test                 # deve mostrar: 336 passed
-```
-
-### Onde está tudo
-
-| Quero... | Arquivo |
-|---|---|
-| Entender o sync | `src/sync/index.ts` — orquestrador principal |
-| Ver os tipos | `src/sync/types.ts` |
-| Testar com banco real | Seguir `TEST_PLAN.md` seção 2 (Smoke Tests) |
-| Adicionar novo timeout | `src/sync/utils/timeout.ts` — adicionar em `DEFAULT_TIMEOUTS` |
-| Adicionar novo retry | `src/sync/utils/retry.ts` — ajustar `RETRYABLE_MSG` se necessário |
-| Adicionar nova tela TUI | `src/sync/tui/screens/` + registrar em `src/sync/tui/app.tsx` |
-| Rodar o benchmark | `npx ts-node src/sync/benchmark/runner.ts --latency 50 --concurrency 20` |
-| Fazer release | `npm version patch && git push --tags` (CI publica automaticamente) |
-
-### Convenções do projeto (NUNCA quebrar)
-
-- `ProjectFile.relativePath` sempre usa `/` (forward slash), mesmo no Windows
-- `ProjectContext` é imutável — sempre `{ ...ctx, newField }`, nunca mutar
-- Lógica de domínio nunca em telas TUI — sempre em `usePipeline` ou engine
-- Saída para usuário em PT-BR; código, variáveis, funções em inglês
-- Testes nunca acessam rede ou Docker real
-- Toda escrita em disco passa por `writer.ts` no migrator (output do pipeline)
-
-### Atenção especial ao retomar
-
-1. **Ink v3.2.0** — não tem prop `gap` em `<Box>`. Use `marginRight`/`marginBottom`. Ink v4+ é ESM-only e incompatível.
-2. **PostgREST cast TypeScript** — queries do Supabase retornam `PostgrestFilterBuilder`, não `Promise`. Use `as unknown as Promise<...>` nos casts.
-3. **DEFAULT_TIMEOUTS** tem tipos literais — parâmetros que recebem esses valores precisam de anotação `number` explícita, não inferência do default.
-4. **Benchmark** usa simulação — os tempos reais dependem da latência de rede para `*.supabase.co`.
+1. **Não comitar `.claude/settings.local.json`** — é configuração local. Verificar se já está no `.gitignore`.
+2. **CRLF/LF warnings** — Git está convertendo automaticamente. Não é problema, mas se quiser limpar: `git add --renormalize .`.
+3. **`HANDOFF.md` na raiz** — Decidir se vai para `.gitignore` ou se entra em `docs/handoffs/`. Sugestão: mover para `docs/handoffs/2026-05-16-guide-module.md` antes de commitar.
+4. **Versão `0.3.5` no `package.json`** — Não foi bumpada nesta sessão. Bumpar para `0.4.0` deve esperar até scripts + nginx estarem prontos.
+5. **Pipeline original intocado** — Comandos `analyze`, `migrate`, `deploy`, `remote`, etc., continuam idênticos. O `guide` é puramente aditivo.
 
 ---
 
-## 15. Referências rápidas
+## 13. Glossário rápido para retomada
 
-```bash
-# Comandos de desenvolvimento
-npm run build            # compila TypeScript → dist/
-npm run dev              # executa CLI via ts-node (sem build)
-npm run typecheck        # verifica tipos src/
-npm run typecheck:test   # verifica tipos test/
-npm test                 # suite completa (336 testes)
-npm run test:watch       # modo interativo
-npm run test:snapshots   # atualiza snapshots
-
-# sync-users
-npm run dev -- sync-users --help
-npm run dev -- sync-users --old-url ... --new-url ... --dry-run
-
-# sync-ui
-npm run dev -- sync-ui
-
-# benchmark
-npx ts-node src/sync/benchmark/runner.ts --latency 20 --concurrency 10
-```
-
-```
-Arquivos de referência desta sessão:
-  HANDOFF.md       ← este arquivo
-  TEST_PLAN.md     ← plano de validação E2E completo
-  CLAUDE.md        ← instruções permanentes do projeto
-  docs/            ← registries.md, tui.md, development.md
-```
+- **GuideState** — Resultado da fase guide. Anexado ao `ProjectContext` via `withGuide()`.
+- **GuideConfig** — Versão interna de `GuideOptions` com defaults aplicados. Tasks só consomem isso.
+- **GuideTargetProfile** — Struct de strings PT-BR por provedor (Hostinger, generic, etc.).
+- **ChecklistSection** — Agrupamento de itens por fase operacional (`pre-deploy`, `vps-setup`, etc.).
+- **ChecklistItem** — Item individual com id estável, label, warning opcional, scriptRef opcional.
+- **`__sectionBuilders`** — Export para testes (convenção interna). Não usar como API pública.
+- **`normalizeOutput`** — Helper de testes que substitui timestamps/paths para snapshots estáveis.
+- **`buildXSection(ctx, config)`** — Função pura que retorna um `ChecklistSection`. Cada fase tem a sua.
+- **`buildStepN(ctx, config)`** — Função pura que retorna uma seção do DEPLOY.md em markdown.
 
 ---
 
-*Gerado ao final da sessão de 2026-05-14. Próxima sessão: continuar a partir de "Prioridade 1 — Validação E2E real".*
+_Fim do handoff. Retomada esperada: descomprimir contexto em < 5 minutos lendo este arquivo._
+
+_Última atualização: 2026-05-16 (encerramento da sessão de implementação do módulo `guide`)._

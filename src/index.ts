@@ -3,7 +3,7 @@ export { resolveSource, LocalFolderSource, ZipSource, GitHubSource, DEFAULT_IGNO
 export type { ProjectFile, ProjectSource, SourceKind, IgnoreRule } from './sources';
 
 // Core — espinha dorsal do pipeline
-export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime, withRemote, withCicd } from './core';
+export { createContext, withAnalysis, withPlan, withValidation, withMigration, withDeploy, withExecution, withRuntime, withRemote, withCicd, withGuide } from './core';
 export type { ProjectContext, SourceInfo, ProjectMeta } from './core';
 
 // Analyzer
@@ -136,6 +136,27 @@ export type {
   CicdIssueSeverity,
   CiStepKind,
 } from './cicd';
+
+// Guide — geração de pacote de deploy assistido humano (DEPLOY.md, scripts, nginx, etc.)
+export { guideProject, guideContext, resolveTargetProfile, listAvailableTargets, HOSTINGER_PROFILE, GENERIC_PROFILE } from './guide';
+export type {
+  GuideState,
+  GuideOptions,
+  GuideConfig,
+  GuideTarget,
+  GuideTargetProfile,
+  DeployDocArtifact,
+  ChecklistArtifact,
+} from './guide';
+
+// Aliased na exportação pública para evitar colisão com `ChecklistItem` do planner
+// (que representa itens do plano de migração — outro domínio).
+export type {
+  ChecklistSection as GuideChecklistSection,
+  ChecklistItem as GuideChecklistItem,
+  ChecklistPhase as GuideChecklistPhase,
+  ChecklistDifficulty as GuideChecklistDifficulty,
+} from './guide';
 
 // Output — renderização desacoplada
 export { TerminalRenderer, JsonRenderer } from './output';
