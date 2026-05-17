@@ -138,17 +138,17 @@ export type {
 } from './cicd';
 
 // Guide — geração de pacote de deploy assistido humano (DEPLOY.md, scripts, nginx, etc.)
-export {
-  guideProject,
-  guideContext,
-  resolveTargetProfile,
-  listAvailableTargets,
-  HOSTINGER_PROFILE,
-  GENERIC_PROFILE,
-  SCRIPT_FILENAMES,
-  SCRIPTS_DIR,
-  scriptRefFor,
-} from './guide';
+//
+// Boundary intencionalmente minimalista:
+//   - guideProject / guideContext: entry points reais da fase
+//   - resolveTargetProfile / listAvailableTargets: introspecção para CLI e TUI
+//   - tipos: para consumidores externos (TUI, API)
+//
+// NÃO exposto deliberadamente (uso interno do módulo):
+//   - HOSTINGER_PROFILE, GENERIC_PROFILE — perfis são dados, acesse via resolveTargetProfile
+//   - SCRIPT_FILENAMES, SCRIPTS_DIR, scriptRefFor — constantes internas em guide/constants.ts
+//   - GENERATED_FILE, ChecklistSection/Item/Phase/Difficulty — implementação interna do CHECKLIST
+export { guideProject, guideContext, resolveTargetProfile, listAvailableTargets } from './guide';
 export type {
   GuideState,
   GuideOptions,

@@ -18,15 +18,20 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import { spawnSync } from 'child_process';
 import type { ProjectContext } from '../../src/core/types';
 import { resolveTargetProfile } from '../../src/guide';
 import {
   generateScripts,
+  __scriptBuilders,
+} from '../../src/guide/tasks/script-generator';
+import {
   SCRIPT_FILENAMES,
   SCRIPTS_DIR,
   scriptRefFor,
-  __scriptBuilders,
-} from '../../src/guide/tasks/script-generator';
+  UNCONFIGURED,
+} from '../../src/guide/constants';
 import type { GuideConfig, BashScriptKey } from '../../src/guide/types';
 import { runGuidePipeline, makeTempDir, removeTempDir } from '../helpers/pipeline';
 import { normalizeOutput } from '../helpers/normalize';
@@ -237,6 +242,52 @@ describe('script-generator — buildDeployScript', () => {
     const script = __scriptBuilders.buildDeployScript(fakeCtx(), fakeConfig({ port: 4000 }));
     expect(script.content).toContain('APP_PORT="4000"');
   });
+
+  it('injeta REQUIRED_VARS vazio quando o plan não tem env vars', () => {
+    const script = __scriptBuilders.buildDeployScript(fakeCtx(), fakeConfig());
+    expect(script.content).toContain('REQUIRED_VARS=()');
+  });
+
+  it('injeta REQUIRED_VARS a partir de ctx.plan.env.required', () => {
+    const ctx = fakeCtx({
+      plan: {
+        ...fakeCtx().plan!,
+        env: {
+          required: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+          optional: [],
+          missing: [],
+          warnings: [],
+        },
+      },
+    });
+    const script = __scriptBuilders.buildDeployScript(ctx, fakeConfig());
+    expect(script.content).toContain('"VITE_SUPABASE_URL"');
+    expect(script.content).toContain('"VITE_SUPABASE_ANON_KEY"');
+  });
+
+  it('fallback: usa ctx.analysis.envVars quando plan.env.required está vazio', () => {
+    const ctx = fakeCtx({
+      analysis: {
+        ...fakeCtx().analysis!,
+        envVars: ['FALLBACK_VAR'],
+      },
+    });
+    const script = __scriptBuilders.buildDeployScript(ctx, fakeConfig());
+    expect(script.content).toContain('"FALLBACK_VAR"');
+  });
+
+  it('inclui lógica de diagnóstico de variáveis ausentes', () => {
+    const ctx = fakeCtx({
+      plan: {
+        ...fakeCtx().plan!,
+        env: { required: ['FOO'], optional: [], missing: [], warnings: [] },
+      },
+    });
+    const script = __scriptBuilders.buildDeployScript(ctx, fakeConfig());
+    expect(script.content).toContain('MISSING=()');
+    expect(script.content).toContain('grep -q "^${var}=" "${REMOTE_PATH}/.env"');
+    expect(script.content).toContain('variáveis estão ausentes em');
+  });
 });
 
 describe('script-generator — buildSslScript', () => {
@@ -251,7 +302,7 @@ describe('script-generator — buildSslScript', () => {
 
   it('quando não há domínio no config, exige argumento (early-exit)', () => {
     const script = __scriptBuilders.buildSslScript(fakeCtx(), fakeConfig({ domain: null }));
-    expect(script.content).toContain('__NAO_CONFIGURADO__');
+    expect(script.content).toContain(UNCONFIGURED);
     expect(script.requiresArguments).toBe(true);
   });
 
@@ -276,6 +327,21 @@ describe('script-generator — buildSslScript', () => {
   it('roda dry-run de renovação automática', () => {
     const script = __scriptBuilders.buildSslScript(fakeCtx(), fakeConfig());
     expect(script.content).toContain('certbot renew --dry-run');
+  });
+
+  it('valida propagação de DNS antes de chamar Certbot (compara dig vs ifconfig.me)', () => {
+    const script = __scriptBuilders.buildSslScript(fakeCtx(), fakeConfig());
+    // O pré-check usa getent + curl ifconfig.me e aborta com exit 1 se DNS não bater
+    expect(script.content).toContain('Verificando propagação do DNS');
+    expect(script.content).toContain('SERVER_IP="$(curl');
+    expect(script.content).toContain('RESOLVED_IP="$(getent hosts');
+    expect(script.content).toContain('ainda não resolve para nenhum IP');
+    expect(script.content).toContain('Atualize o A record');
+
+    // E o pré-check vem ANTES do certbot
+    const dnsCheckIdx = script.content.indexOf('Verificando propagação do DNS');
+    const certbotIdx  = script.content.indexOf('certbot --nginx');
+    expect(dnsCheckIdx).toBeLessThan(certbotIdx);
   });
 
   it('escapa variáveis do Nginx ($http_upgrade etc) para não serem interpoladas pelo bash', () => {
@@ -306,8 +372,8 @@ describe('script-generator — buildHealthCheckScript', () => {
 
   it('pula checagens HTTPS quando não há domínio', () => {
     const script = __scriptBuilders.buildHealthCheckScript(fakeCtx(), fakeConfig({ domain: null }));
-    expect(script.content).toContain('DOMAIN="__NAO_CONFIGURADO__"');
-    expect(script.content).toContain('!= "__NAO_CONFIGURADO__"');
+    expect(script.content).toContain(`DOMAIN="${UNCONFIGURED}"`);
+    expect(script.content).toContain(`!= "${UNCONFIGURED}"`);
   });
 });
 
@@ -510,7 +576,7 @@ describe('script-generator — Pipeline sem domínio', () => {
       'utf-8',
     );
     expect(content).toContain('Nenhum domínio foi fornecido');
-    expect(content).toContain('__NAO_CONFIGURADO__');
+    expect(content).toContain(UNCONFIGURED);
   });
 
   it('health-check pula checagens HTTPS quando domain não configurado', () => {
@@ -519,6 +585,80 @@ describe('script-generator — Pipeline sem domínio', () => {
       'utf-8',
     );
     expect(content).toContain('Domínio não configurado — pulando checagens HTTPS');
+  });
+});
+
+// ─── Sintaxe bash (bash -n) ───────────────────────────────────────────────────
+
+/**
+ * Disponibilidade do `bash` na máquina onde os testes rodam.
+ *
+ * Em CI Linux/macOS bash sempre existe; no Windows do dev geralmente vem com Git Bash.
+ * Quando ausente (CI Windows nativo, por exemplo), os testes de sintaxe são pulados —
+ * essa proteção é melhor que falhar arbitrariamente em uma plataforma.
+ */
+const BASH_AVAILABLE = (() => {
+  try {
+    const result = spawnSync('bash', ['--version'], { stdio: 'ignore' });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+})();
+
+describe.skipIf(!BASH_AVAILABLE)('script-generator — sintaxe bash (bash -n)', () => {
+  /**
+   * Escreve o script em arquivo temporário e roda `bash -n` (parse-only).
+   * Não executa o conteúdo — apenas valida que o parser do bash aceita.
+   * Pega: aspas não fechadas, blocos `if/fi` desbalanceados, here-docs malformados.
+   */
+  function checkSyntax(filename: string, content: string): void {
+    const tmpFile = path.join(os.tmpdir(), `lovable-bash-syntax-${Date.now()}-${filename}`);
+    fs.writeFileSync(tmpFile, content);
+    try {
+      const result = spawnSync('bash', ['-n', tmpFile], { encoding: 'utf-8' });
+      if (result.status !== 0) {
+        throw new Error(
+          `bash -n falhou em ${filename}:\nstdout: ${result.stdout}\nstderr: ${result.stderr}`,
+        );
+      }
+    } finally {
+      try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+    }
+  }
+
+  it.each(ALL_KEYS)('%s tem sintaxe bash válida (com domínio configurado)', (key) => {
+    const script = builderFor(key)(fakeCtx(), fakeConfig());
+    checkSyntax(script.filename, script.content);
+  });
+
+  it.each(ALL_KEYS)('%s tem sintaxe bash válida (sem domínio — sentinel UNCONFIGURED)', (key) => {
+    const script = builderFor(key)(fakeCtx(), fakeConfig({ domain: null, adminEmail: null }));
+    checkSyntax(script.filename, script.content);
+  });
+
+  it('deploy script com lista vazia de REQUIRED_VARS tem sintaxe válida', () => {
+    // Cobre o branch onde ctx.plan?.env.required = []
+    const script = __scriptBuilders.buildDeployScript(fakeCtx(), fakeConfig());
+    checkSyntax(script.filename, script.content);
+  });
+
+  it('deploy script com múltiplas variáveis injetadas tem sintaxe válida', () => {
+    const ctx = fakeCtx({
+      plan: {
+        ...fakeCtx().plan!,
+        env: {
+          required: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'DATABASE_URL'],
+          optional: [],
+          missing: [],
+          warnings: [],
+        },
+      },
+    });
+    const script = __scriptBuilders.buildDeployScript(ctx, fakeConfig());
+    checkSyntax(script.filename, script.content);
+    expect(script.content).toContain('REQUIRED_VARS=(');
+    expect(script.content).toContain('"VITE_SUPABASE_URL"');
   });
 });
 

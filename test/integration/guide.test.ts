@@ -18,6 +18,7 @@ import fs from 'fs';
 import type { ProjectContext } from '../../src/core/types';
 import { guideProject, resolveTargetProfile, listAvailableTargets } from '../../src/guide';
 import { runGuidePipeline, runPipeline, makeTempDir, removeTempDir } from '../helpers/pipeline';
+import { normalizeOutput } from '../helpers/normalize';
 
 // ─── Target profiles ──────────────────────────────────────────────────────────
 
@@ -184,6 +185,39 @@ describe('Guide — Pipeline completo (react-vite + hostinger + domínio)', () =
     );
     expect(content).toContain('## Solução de problemas');
   });
+
+  it('DEPLOY.md inclui seção "O que esperar" antes do Passo 1', () => {
+    const content = fs.readFileSync(
+      path.join(outputDir, 'deployment-guide', 'DEPLOY.md'),
+      'utf-8',
+    );
+    const expectIdx = content.indexOf('## O que esperar');
+    const step1Idx  = content.indexOf('## Passo 1');
+    expect(expectIdx).toBeGreaterThan(-1);
+    expect(step1Idx).toBeGreaterThan(-1);
+    expect(expectIdx).toBeLessThan(step1Idx);
+  });
+
+  it('Troubleshooting aparece ANTES de "Atalhos via script"', () => {
+    const content = fs.readFileSync(
+      path.join(outputDir, 'deployment-guide', 'DEPLOY.md'),
+      'utf-8',
+    );
+    const troubleIdx = content.indexOf('## Solução de problemas');
+    const shortcutsIdx = content.indexOf('## Atalhos via script');
+    expect(troubleIdx).toBeGreaterThan(-1);
+    expect(shortcutsIdx).toBeGreaterThan(-1);
+    expect(troubleIdx).toBeLessThan(shortcutsIdx);
+  });
+
+  it('DEPLOY.md corresponde ao snapshot (react-vite + hostinger)', () => {
+    const content = fs.readFileSync(
+      path.join(outputDir, 'deployment-guide', 'DEPLOY.md'),
+      'utf-8',
+    );
+    const normalized = normalizeOutput(content, { outputDir });
+    expect(normalized).toMatchSnapshot();
+  });
 });
 
 // ─── Pipeline com fixture Supabase ───────────────────────────────────────────
@@ -216,6 +250,15 @@ describe('Guide — Pipeline completo (supabase-project)', () => {
 
   it('GuideState reflete o projeto correto', () => {
     expect(ctx.guide?.projectName).toBe('supabase-project');
+  });
+
+  it('DEPLOY.md corresponde ao snapshot (supabase + hostinger)', () => {
+    const content = fs.readFileSync(
+      path.join(outputDir, 'deployment-guide', 'DEPLOY.md'),
+      'utf-8',
+    );
+    const normalized = normalizeOutput(content, { outputDir });
+    expect(normalized).toMatchSnapshot();
   });
 });
 
@@ -290,6 +333,59 @@ describe('Guide — Normalização de domínio', () => {
       expect(ctx.guide?.domain).toBeNull();
     } finally {
       removeTempDir(outDir3);
+    }
+  });
+
+  it('rejeita domínio começando com www. com mensagem amigável', async () => {
+    const outDir = makeTempDir();
+    try {
+      await expect(
+        runGuidePipeline('react-vite', outDir, { target: 'hostinger', domain: 'www.meuapp.com' }, true),
+      ).rejects.toThrow(/sem "www\.".*meuapp\.com/i);
+    } finally {
+      removeTempDir(outDir);
+    }
+  });
+
+  it('rejeita domínio com formato inválido', async () => {
+    const outDir = makeTempDir();
+    try {
+      await expect(
+        runGuidePipeline('react-vite', outDir, { target: 'hostinger', domain: 'naoehumdominio' }, true),
+      ).rejects.toThrow(/Domínio inválido/);
+    } finally {
+      removeTempDir(outDir);
+    }
+  });
+
+  it('rejeita adminEmail com formato inválido', async () => {
+    const outDir = makeTempDir();
+    try {
+      await expect(
+        runGuidePipeline(
+          'react-vite',
+          outDir,
+          { target: 'hostinger', domain: 'meuapp.com', adminEmail: 'naoehumemail' },
+          true,
+        ),
+      ).rejects.toThrow(/Email inválido/);
+    } finally {
+      removeTempDir(outDir);
+    }
+  });
+
+  it('aceita adminEmail válido', async () => {
+    const outDir = makeTempDir();
+    try {
+      const ctx = await runGuidePipeline(
+        'react-vite',
+        outDir,
+        { target: 'hostinger', domain: 'meuapp.com', adminEmail: 'admin@meuapp.com' },
+        true,
+      );
+      expect(ctx.guide?.domain).toBe('meuapp.com');
+    } finally {
+      removeTempDir(outDir);
     }
   });
 

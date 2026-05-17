@@ -76,18 +76,74 @@ function resolveGuideConfig(
     domain:     normalizeDomain(options.domain),
     port,
     remotePath: options.remotePath ?? profile.defaultRemotePath,
-    adminEmail: options.adminEmail ?? null,
+    adminEmail: normalizeAdminEmail(options.adminEmail),
   };
 }
 
-/** Remove protocolo, trailing slash e espaços. Retorna null se vazio. */
+// Regex pragmático: rótulos alfanuméricos (com hífen interno) separados por ponto,
+// pelo menos 2 segmentos. Não cobre IDN (Unicode) — quando aparecer demanda,
+// adicione idn-uts46 e converta antes de validar.
+const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+// Validação de email "razoável" — não tenta cobrir RFC 5322 completo.
+// O Certbot rejeita emails malformados no provisionamento; vale falhar cedo aqui.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Normaliza e valida o domínio fornecido pelo usuário.
+ *
+ * Aceita: "meuapp.com", "https://meuapp.com", "meuapp.com/", "  meuapp.com  ".
+ * Rejeita: domínios com formato inválido, com "www." no início (porque o guide
+ * já configura `www` automaticamente — passar "www.meuapp.com" causa duplicação).
+ *
+ * Retorna `null` quando o usuário não forneceu nada (caminho normal).
+ */
 function normalizeDomain(raw: string | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
   if (trimmed === '') return null;
-  return trimmed
+
+  const cleaned = trimmed
     .replace(/^https?:\/\//, '')
     .replace(/\/+$/, '');
+
+  if (cleaned.toLowerCase().startsWith('www.')) {
+    throw new Error(
+      `Domínio inválido: "${raw}". Use o domínio raiz, sem "www." — o guide ` +
+      `configura "www.${cleaned.slice(4)}" automaticamente. Ex: --domain ${cleaned.slice(4)}`,
+    );
+  }
+
+  if (!DOMAIN_RE.test(cleaned)) {
+    throw new Error(
+      `Domínio inválido: "${raw}". Use o formato "meuapp.com" — letras, números, ` +
+      `hífens e pontos. Sem espaços, sem caracteres acentuados, sem barras.`,
+    );
+  }
+
+  return cleaned;
+}
+
+/**
+ * Normaliza e valida o email administrativo (usado pelo Certbot/Let's Encrypt).
+ *
+ * Retorna `null` quando o usuário não forneceu nada. Falha cedo com mensagem
+ * útil se o formato estiver claramente errado — Certbot quebra em runtime
+ * com mensagem críptica se aceitar um email inválido.
+ */
+function normalizeAdminEmail(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+
+  if (!EMAIL_RE.test(trimmed)) {
+    throw new Error(
+      `Email inválido: "${raw}". Use o formato "voce@exemplo.com". ` +
+      `O Certbot usa esse email para avisos de expiração de certificado SSL.`,
+    );
+  }
+
+  return trimmed;
 }
 
 // ─── Coletor de arquivos ──────────────────────────────────────────────────────
@@ -210,4 +266,3 @@ export type {
   GeneratedFile,
 } from './types';
 
-export { SCRIPT_FILENAMES, SCRIPTS_DIR, scriptRefFor } from './tasks/script-generator';

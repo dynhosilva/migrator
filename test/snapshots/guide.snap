@@ -1,0 +1,941 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Guide — Pipeline completo (react-vite + hostinger + domínio) > DEPLOY.md corresponde ao snapshot (react-vite + hostinger) 1`] = `
+"# Deploy do projeto react-vite
+
+Guia passo a passo para publicar o seu projeto **React (Vite/CRA)** em um **Hostinger VPS**.
+
+| Campo | Valor |
+|---|---|
+| Projeto | \`react-vite\` |
+| Framework | React (Vite/CRA) |
+| Package manager | \`npm\` |
+| Porta da aplicação | \`80\` |
+| Domínio | \`meuapp.com\` |
+| Sistema operacional alvo | Ubuntu 22.04 LTS |
+| Caminho remoto | \`/opt/app\` |
+
+---
+
+> ℹ️ **Para quem é esse guia**  
+> Você não precisa saber Linux, Docker ou Nginx para seguir esse guia. Cada comando vem com explicação do que ele faz. Se um passo der errado, vá direto para a seção **Solução de problemas** no final.
+
+## O que você vai fazer
+
+O deploy é o processo de "publicar" o seu projeto em um servidor na internet. Em vez de ele rodar só no seu computador, ele passa a rodar 24h por dia em uma máquina que qualquer pessoa pode acessar pela web.
+
+Você vai fazer isso em **9 passos**:
+
+1. Preparar o VPS (servidor virtual)
+2. Abrir o terminal SSH (linha de comando do servidor)
+3. Atualizar o sistema e instalar Docker
+4. Enviar os arquivos do projeto para o servidor
+5. Configurar as variáveis de ambiente
+6. Subir a aplicação com Docker Compose
+7. Configurar o domínio (DNS)
+8. Configurar o Nginx (servidor web público)
+9. Configurar HTTPS com SSL gratuito
+
+Cada passo tem um título claro, o comando exato para copiar, e uma explicação de **o que aquele comando faz**.
+
+> 🚀 **Atalho disponível**  
+> Cada um desses passos também está empacotado como script bash em \`deployment-guide/scripts/\`. Você pode ler o guia uma vez para entender, e nas próximas usar os scripts para acelerar — veja a seção **Atalhos via script** ao final do documento.
+
+## O que esperar
+
+Antes de começar, é útil saber o que vai acontecer no servidor — para você não se assustar quando coisas mudarem.
+
+### Tempo realista
+
+- **30-45 min** se você já fez deploy uma vez e tudo der certo
+- **1-2 horas** na primeira vez, com algumas paradas para entender o que cada comando faz
+- **2-4 horas** se algo der errado e você precisar consultar o troubleshooting
+
+Não há problema em demorar — não é uma corrida. Cada passo tem o tempo estimado ao lado.
+
+### O que vai mudar no servidor
+
+- O sistema vai ser **atualizado** (\`apt-get upgrade\`) — pacotes antigos serão substituídos. Em servidores que rodam outros serviços, isso pode reiniciar processos. Em um VPS recém-criado (que é o cenário recomendado), o impacto é zero.
+- O **firewall** (UFW) vai ser ativado liberando apenas SSH (22), HTTP (80) e HTTPS (443). Se você usa outras portas, libere antes ou ajuste depois.
+- O **Docker** vai ser instalado e configurado para iniciar no boot.
+- O **fuso horário** vai ser definido como UTC. Para horário de Brasília, edite o script \`01-setup-vps.sh\` antes de rodar.
+- O **Nginx** vai ser configurado como proxy reverso para \`meuapp.com\` → porta interna 80.
+
+### Propagação de DNS — o passo mais demorado
+
+Configurar o DNS do seu domínio leva **5 minutos a 24 horas** para propagar pela internet. Esse é o único passo que você não controla — depende dos servidores do seu provedor de domínio.
+
+- Na maioria das vezes propaga em 10-30 min.
+- Os scripts e o checklist verificam a propagação automaticamente antes de chamar o Certbot — se ainda não propagou, eles param e pedem para você esperar mais.
+
+### Erros comuns que podem acontecer
+
+- **"Permission denied"** — você não está logado como \`root\`. Use \`sudo\` ou conecte com o usuário correto.
+- **"Connection refused"** — o IP está errado ou o servidor está desligado. Confirme no painel hPanel.
+- **"DNS problem"** no Certbot — o DNS ainda não propagou. Espere 10 min e tente de novo.
+- **App sobe mas não responde** — quase sempre é uma variável faltando no \`.env\`. O script \`04-deploy-app.sh\` avisa quando detecta isso.
+- **"Address already in use"** — outro serviço está na mesma porta. Veja com \`ss -tlnp\`.
+
+Todos esses casos estão na seção **Solução de problemas** no final desse arquivo, com o comando exato para resolver.
+
+> 🛟 **Se você travar em algum passo**  
+> Pare, leia a seção **Solução de problemas** (no fim do arquivo). Quase tudo o que pode dar errado já está documentado lá. Se ainda assim não resolver, o \`06-health-check.sh\` faz um diagnóstico automático e aponta o que está fora do ar.
+
+## Glossário rápido
+
+Se você nunca trabalhou com servidores antes, esses termos vão aparecer várias vezes:
+
+- **VPS** (Virtual Private Server): um computador na nuvem que fica ligado 24/7. Você acessa ele pela internet usando SSH.
+- **SSH** (Secure Shell): a forma de "entrar" no servidor pelo terminal. Você digita comandos e o servidor executa.
+- **Docker**: uma forma de empacotar a sua aplicação em uma "caixa" que roda igual em qualquer servidor — sem se preocupar com instalar Node, dependências, etc.
+- **Docker Compose**: ferramenta que sobe a sua aplicação Docker com um único comando, lendo um arquivo de configuração (\`docker-compose.yml\`).
+- **Nginx**: o "porteiro" do servidor. Recebe as requisições da internet e encaminha para a sua aplicação.
+- **DNS**: o sistema que liga o seu domínio (\`meuapp.com\`) ao IP do servidor (\`123.45.67.89\`).
+- **SSL/HTTPS**: o cadeado verde do navegador. Criptografa a comunicação entre o usuário e o servidor.
+
+## Passo 1 — Preparar o Hostinger VPS
+
+Antes de qualquer coisa, você precisa de um VPS ativo. Plano recomendado: **KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe)**.
+
+### No painel (hPanel)
+
+1. Acesse https://hpanel.hostinger.com e faça login.
+2. No menu lateral, clique em "VPS" e selecione o seu servidor.
+3. Na aba "Visão geral", anote o IP público do servidor — você vai precisar dele.
+4. Na aba "Sistema operacional", confirme que está rodando Ubuntu 22.04 LTS. Se não estiver, use "Reinstalar SO" e escolha Ubuntu 22.04.
+
+> ✅ **O que você precisa ter ao final desse passo**  
+> O **IP público do servidor** anotado (algo como \`123.45.67.89\`) e a confirmação de que o sistema operacional é \`Ubuntu 22.04 LTS\`.
+
+## Passo 2 — Abrir o terminal SSH
+
+O terminal SSH é onde você vai digitar todos os comandos. Pense nele como uma janela direta com o servidor.
+
+1. Opção A (mais fácil, dentro do navegador): no hPanel, abra seu VPS e clique em "Terminal de navegador". Uma janela preta abre — esse é o terminal SSH.
+2. Opção B (terminal local): abra o Terminal (macOS/Linux) ou PowerShell (Windows) e rode: \`ssh root@SEU_IP_AQUI\`. Substitua SEU_IP_AQUI pelo IP da Hostinger.
+3. Na primeira conexão, digite "yes" para confirmar a fingerprint do servidor.
+4. A senha root é definida no hPanel em "Acesso SSH". Se não lembrar, redefina por lá.
+
+Se a conexão funcionou, você verá algo como:
+
+\`\`\`bash
+Welcome to Ubuntu 22.04 LTS
+root@servidor:~#
+\`\`\`
+
+> ⚠️ **A partir daqui, tudo é dentro do servidor**  
+> Todos os próximos comandos são rodados dentro desse terminal SSH (no servidor), **não no seu computador local**.
+
+## Passo 3 — Atualizar o sistema e instalar Docker
+
+O servidor vem com o sistema operacional, mas ainda não tem o Docker. Vamos atualizar tudo e instalar.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/01-setup-vps.sh\` e \`deployment-guide/scripts/02-install-docker.sh\`. No terminal do servidor (SSH), rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/01-setup-vps.sh
+> bash deployment-guide/scripts/02-install-docker.sh
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> Os scripts cobrem 3.1 (update do sistema + firewall básico) e 3.2/3.3/3.4 (Docker + Compose + validação).
+
+### 3.1 Atualizar o sistema
+
+\`\`\`bash
+apt-get update && apt-get upgrade -y
+\`\`\`
+
+_O que esse comando faz:_ baixa a lista de atualizações disponíveis (\`update\`) e instala todas (\`upgrade -y\` aceita automaticamente).
+
+### 3.2 Instalar Docker
+
+\`\`\`bash
+curl -fsSL https://get.docker.com | sh
+\`\`\`
+
+_O que esse comando faz:_ baixa o script oficial do Docker (\`curl\`) e executa (\`| sh\`). Esse é o método recomendado pela própria Docker.
+
+### 3.3 Instalar Docker Compose
+
+\`\`\`bash
+apt-get install -y docker-compose-plugin
+\`\`\`
+
+_O que esse comando faz:_ instala o plugin \`compose\` do Docker, que permite usar o comando \`docker compose up\`.
+
+### 3.4 Verificar instalação
+
+\`\`\`bash
+docker --version
+docker compose version
+\`\`\`
+
+Se aparecer algo como \`Docker version 24.x\` e \`Docker Compose version v2.x\`, está tudo certo.
+
+## Passo 4 — Enviar os arquivos do projeto para o servidor
+
+O \`lovable-migrate\` já gerou todos os arquivos que o servidor precisa em \`output/react-vite/\` no seu computador. Agora você vai copiá-los para o servidor.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/03-upload-app.sh\`. No terminal do seu computador, rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/03-upload-app.sh SEU_IP_AQUI
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> O script cuida do \`mkdir\` remoto, empacota com \`tar\` e envia via SSH streaming (mais rápido que múltiplos \`scp\`).
+
+### 4.1 Criar o diretório no servidor
+
+Dentro do terminal SSH (no servidor):
+
+\`\`\`bash
+mkdir -p /opt/app
+cd /opt/app
+\`\`\`
+
+_O que esse comando faz:_ cria a pasta \`/opt/app\` (se ainda não existir) e entra nela.
+
+### 4.2 Copiar os arquivos do seu computador para o servidor
+
+Agora abra um **segundo terminal no seu próprio computador** (não no servidor). Vamos usar \`scp\` para enviar os arquivos.
+
+Navegue até a pasta do projeto migrado e rode:
+
+\`\`\`bash
+cd output/react-vite
+scp -r docker/ .env root@SEU_IP_AQUI:/opt/app/
+\`\`\`
+
+_O que esse comando faz:_ envia a pasta \`docker/\` e o arquivo \`.env\` para o servidor, dentro do caminho remoto. Substitua \`SEU_IP_AQUI\` pelo IP que você anotou no Passo 1.
+
+> ℹ️ **Ainda não tem o arquivo .env?**  
+> Sem problema — vamos criá-lo direto no servidor no próximo passo. Pode pular essa parte do \`scp\` removendo \`.env\` do comando.
+
+## Passo 5 — Configurar as variáveis de ambiente
+
+Variáveis de ambiente são os "segredos" e configurações do projeto: chaves de API, URL do banco, etc. Elas ficam em um arquivo chamado \`.env\`.
+
+
+### 5.1 Criar o arquivo \`.env\` no servidor
+
+No terminal SSH (no servidor):
+
+\`\`\`bash
+cd /opt/app
+nano .env
+\`\`\`
+
+_O que esse comando faz:_ abre o editor de texto \`nano\` no arquivo \`.env\`. Para sair: \`Ctrl+X\`, depois \`Y\`, depois \`Enter\`.
+
+### 5.2 Cole o conteúdo abaixo e preencha os valores
+
+\`\`\`bash
+VITE_API_URL=
+VITE_APP_TITLE=
+\`\`\`
+
+> 🔒 **Esses valores são secretos**  
+> Nunca compartilhe esse arquivo em público (GitHub, chat, etc). Ele contém chaves que dão acesso ao seu banco e serviços.
+
+## Passo 6 — Subir a aplicação com Docker Compose
+
+Agora vamos ligar a aplicação. O \`docker-compose.yml\` que o \`lovable-migrate\` gerou já está configurado.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/04-deploy-app.sh\`. No terminal do servidor (SSH), rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/04-deploy-app.sh
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> O script verifica \`.env\`, faz \`docker compose up -d --build\` e mostra status + logs iniciais.
+
+No terminal SSH (no servidor):
+
+\`\`\`bash
+cd /opt/app/docker
+docker compose up -d --build
+\`\`\`
+
+_O que esse comando faz:_
+
+- \`up\`: inicia os containers
+- \`-d\` (detached): roda em segundo plano (você fecha o terminal e continua rodando)
+- \`--build\`: constrói a imagem Docker antes (na primeira vez, demora alguns minutos)
+
+### Verificar se subiu
+
+\`\`\`bash
+docker compose ps
+\`\`\`
+
+Se aparecer um container com status \`running\` (rodando), está no ar. Teste acessando \`http://SEU_IP_AQUI:80\` no navegador — você deve ver a sua aplicação.
+
+> 🐛 **Não abriu? Veja os logs**  
+> Rode \`docker compose logs --tail=100\` para ver as últimas 100 linhas de log. A maioria dos erros aparece ali (variável faltando, porta em uso, etc).
+
+## Passo 7 — Configurar o domínio (DNS)
+
+Vamos fazer com que \`meuapp.com\` aponte para o seu servidor.
+
+### Onde configurar
+
+No painel onde você comprou o domínio (Registro.br, GoDaddy, Hostinger Domains, Namecheap, etc.), procure por **"Gerenciar DNS"** ou **"Zona DNS"**.
+
+### Que registros adicionar
+
+| Tipo | Nome | Valor | TTL |
+|---|---|---|---|
+| A | @ | \`SEU_IP_AQUI\` | 3600 |
+| A | www | \`SEU_IP_AQUI\` | 3600 |
+
+_O que isso significa:_ o registro \`@\` aponta o domínio raiz (\`meuapp.com\`) para o IP. O \`www\` faz o mesmo para \`www.meuapp.com\`.
+
+> ⏱ **O DNS demora para propagar**  
+> Pode levar de 5 minutos a 24 horas para o domínio começar a apontar para o servidor. Para conferir, rode no seu computador: \`ping meuapp.com\` — se aparecer o IP do servidor, está propagado.
+
+### Observações sobre Hostinger VPS
+
+- A Hostinger já abre as portas 22 (SSH), 80 (HTTP) e 443 (HTTPS) por padrão — não precisa configurar firewall externo.
+- Para apontar um domínio, configure os registros DNS no painel onde o domínio foi comprado (Hostinger Domains, Registro.br, GoDaddy, etc.) — adicione um registro A apontando para o IP do VPS.
+- O suporte da Hostinger via chat 24/7 ajuda com problemas de rede e SO — não com a configuração da sua aplicação.
+
+## Passo 8 — Configurar o Nginx (servidor web público)
+
+Hoje, sua aplicação roda na porta \`80\` (acessível por \`http://SEU_IP_AQUI:80\`). Vamos colocar o Nginx na frente para que ela seja servida em \`http://meuapp.com\` (porta 80, padrão da web).
+
+### 8.1 Instalar Nginx
+
+\`\`\`bash
+apt-get install -y nginx
+\`\`\`
+
+### 8.2 Criar arquivo de configuração
+
+\`\`\`bash
+nano /etc/nginx/sites-available/meuapp.com
+\`\`\`
+
+Cole o seguinte conteúdo (substitua \`meuapp.com\` pelo seu domínio):
+
+\`\`\`nginx
+server {
+    listen 80;
+    server_name meuapp.com www.meuapp.com;
+
+    location / {
+        proxy_pass http://localhost:80;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+\`\`\`
+
+_O que essa configuração faz:_ qualquer requisição que chegar em \`meuapp.com\` (porta 80) é encaminhada para a sua aplicação rodando na porta \`80\`.
+
+### 8.3 Ativar a configuração
+
+\`\`\`bash
+ln -s /etc/nginx/sites-available/meuapp.com /etc/nginx/sites-enabled/
+nginx -t
+systemctl reload nginx
+\`\`\`
+
+_O que esses comandos fazem:_
+
+- \`ln -s\`: ativa o arquivo de configuração
+- \`nginx -t\`: testa se a configuração está correta (deve dizer \`syntax is ok\`)
+- \`systemctl reload nginx\`: aplica a nova configuração
+
+Agora teste \`http://meuapp.com\` no navegador — sua aplicação deve aparecer.
+
+## Passo 9 — Configurar HTTPS com SSL gratuito
+
+Vamos adicionar o cadeado verde (\`https://\`). Usamos o Let's Encrypt, que é gratuito e automático.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/05-setup-ssl.sh\`. No terminal do servidor (SSH), rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/05-setup-ssl.sh meuapp.com seu-email@exemplo.com
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> O script combina os Passos 8 e 9: instala Nginx + Certbot, cria o virtual host, gera o certificado e testa a renovação automática.
+
+### 9.1 Instalar Certbot
+
+\`\`\`bash
+apt-get install -y certbot python3-certbot-nginx
+\`\`\`
+
+### 9.2 Gerar o certificado
+
+\`\`\`bash
+certbot --nginx -d meuapp.com -d www.meuapp.com --non-interactive --agree-tos --email seu-email@exemplo.com
+\`\`\`
+
+_O que esse comando faz:_ o Certbot pede um certificado SSL para o seu domínio, instala ele no Nginx automaticamente, e configura o redirecionamento de \`http://\` para \`https://\`.
+
+> ⚠️ **O DNS precisa estar propagado**  
+> O Certbot acessa \`meuapp.com\` para confirmar que você é o dono. Se o DNS ainda não propagou (Passo 7), esse comando falha. Espere alguns minutos e tente de novo.
+
+### 9.3 Renovação automática
+
+O certificado dura 90 dias e renova sozinho. Para confirmar:
+
+\`\`\`bash
+systemctl status certbot.timer
+\`\`\`
+
+Se aparecer \`active (running)\`, está tudo certo.
+
+> 🎉 **Pronto!**  
+> Sua aplicação está no ar em \`https://meuapp.com\` com cadeado verde, rodando em Docker, atrás do Nginx, com SSL gratuito que renova sozinho. Você acabou de fazer um deploy de produção profissional.
+
+## Solução de problemas
+
+### O comando \`ssh\` retorna "Connection refused"
+
+Verifique se o IP está correto e se o servidor está ligado no painel hPanel. A porta 22 (SSH) precisa estar liberada — na maioria dos provedores ela já vem aberta por padrão.
+
+### \`docker compose up\` falha com "permission denied"
+
+Você não está logado como \`root\`. Rode \`sudo docker compose up -d --build\` ou conecte SSH com \`root\`.
+
+### A aplicação subiu mas não responde no navegador
+
+Cheque os logs com \`docker compose logs --tail=200\`. Normalmente é uma variável de ambiente faltando no \`.env\` (veja Passo 5).
+
+### \`nginx -t\` retorna erro
+
+Olhe a mensagem — geralmente é uma chave \`}\` faltando no arquivo de configuração. Volte ao Passo 8.2 e revise o conteúdo colado.
+
+### Certbot retorna "DNS problem"
+
+O DNS do seu domínio ainda não propagou. Espere mais alguns minutos e teste com \`ping seu-dominio.com\` no seu computador — ele precisa retornar o IP do servidor.
+
+### Como atualizar a aplicação depois?
+
+Para subir uma nova versão, repita o Passo 4 (enviar arquivos) e o Passo 6 com \`docker compose up -d --build\`. O Docker rebuild só o que mudou — geralmente é rápido.
+
+### Onde aprender mais?
+
+- **Docker** — [docs.docker.com/get-started](https://docs.docker.com/get-started/)
+- **Nginx** — [nginx.org/en/docs/beginners_guide.html](https://nginx.org/en/docs/beginners_guide.html)
+- **Let's Encrypt / Certbot** — [certbot.eff.org](https://certbot.eff.org/)
+
+## Atalhos via script (opcional, mas recomendado)
+
+Todo passo acima também está empacotado como script bash em \`deployment-guide/scripts/\`. Use os scripts depois de ler o guia narrativo — eles servem para acelerar e para você ter um registro reproduzível do deploy.
+
+### Primeiro, libere a execução
+
+Os scripts vêm sem flag de execução. Antes de usá-los pela primeira vez, rode (uma única vez) onde os arquivos estiverem:
+
+\`\`\`bash
+chmod +x deployment-guide/scripts/*.sh
+\`\`\`
+
+### Ordem recomendada de execução
+
+| Script | Onde rodar | Faz | Cobre |
+|---|---|---|---|
+| \`deployment-guide/scripts/01-setup-vps.sh\` | servidor | Update + timezone + UFW | Passo 3 |
+| \`deployment-guide/scripts/02-install-docker.sh\` | servidor | Docker Engine + Compose plugin | Passo 3 |
+| \`deployment-guide/scripts/03-upload-app.sh\` | local | Empacota e envia docker/ + .env via tar|ssh streaming | Passo 4 |
+| \`deployment-guide/scripts/04-deploy-app.sh\` | servidor | docker compose up -d --build + logs | Passo 6 |
+| \`deployment-guide/scripts/05-setup-ssl.sh\` | servidor | Nginx + Certbot + virtual host + renew dry-run | Passos 8 e 9 |
+| \`deployment-guide/scripts/06-health-check.sh\` | servidor | Diagnóstico de Docker, app, Nginx, DNS, HTTPS | Pós-deploy |
+
+> ℹ️ **O script não substitui o guia**  
+> Cada script tem comentários PT-BR explicando linha a linha o que faz. Se algo der errado, abra o \`.sh\` correspondente — geralmente o motivo do erro está no comentário do passo que falhou.
+
+---
+
+### Contexto técnico
+
+- Estratégia de deploy detectada: **static** — site estático (servido por Nginx no container)
+- Confiança da detecção: \`high\`
+- Guia gerado em: <TIMESTAMP>
+
+_Esse guia foi gerado automaticamente pelo \`lovable-migrate\` a partir da análise do seu projeto. Para regenerar com novas configurações, rode novamente com \`--target\`, \`--domain\` ou outras flags._
+"
+`;
+
+exports[`Guide — Pipeline completo (supabase-project) > DEPLOY.md corresponde ao snapshot (supabase + hostinger) 1`] = `
+"# Deploy do projeto supabase-project
+
+Guia passo a passo para publicar o seu projeto **React (Vite/CRA)** em um **Hostinger VPS**.
+
+| Campo | Valor |
+|---|---|
+| Projeto | \`supabase-project\` |
+| Framework | React (Vite/CRA) |
+| Package manager | \`npm\` |
+| Porta da aplicação | \`80\` |
+| Domínio | \`meuapp.com\` |
+| Sistema operacional alvo | Ubuntu 22.04 LTS |
+| Caminho remoto | \`/opt/app\` |
+
+---
+
+> ℹ️ **Para quem é esse guia**  
+> Você não precisa saber Linux, Docker ou Nginx para seguir esse guia. Cada comando vem com explicação do que ele faz. Se um passo der errado, vá direto para a seção **Solução de problemas** no final.
+
+## O que você vai fazer
+
+O deploy é o processo de "publicar" o seu projeto em um servidor na internet. Em vez de ele rodar só no seu computador, ele passa a rodar 24h por dia em uma máquina que qualquer pessoa pode acessar pela web.
+
+Você vai fazer isso em **9 passos**:
+
+1. Preparar o VPS (servidor virtual)
+2. Abrir o terminal SSH (linha de comando do servidor)
+3. Atualizar o sistema e instalar Docker
+4. Enviar os arquivos do projeto para o servidor
+5. Configurar as variáveis de ambiente
+6. Subir a aplicação com Docker Compose
+7. Configurar o domínio (DNS)
+8. Configurar o Nginx (servidor web público)
+9. Configurar HTTPS com SSL gratuito
+
+Cada passo tem um título claro, o comando exato para copiar, e uma explicação de **o que aquele comando faz**.
+
+> 🚀 **Atalho disponível**  
+> Cada um desses passos também está empacotado como script bash em \`deployment-guide/scripts/\`. Você pode ler o guia uma vez para entender, e nas próximas usar os scripts para acelerar — veja a seção **Atalhos via script** ao final do documento.
+
+## O que esperar
+
+Antes de começar, é útil saber o que vai acontecer no servidor — para você não se assustar quando coisas mudarem.
+
+### Tempo realista
+
+- **30-45 min** se você já fez deploy uma vez e tudo der certo
+- **1-2 horas** na primeira vez, com algumas paradas para entender o que cada comando faz
+- **2-4 horas** se algo der errado e você precisar consultar o troubleshooting
+
+Não há problema em demorar — não é uma corrida. Cada passo tem o tempo estimado ao lado.
+
+### O que vai mudar no servidor
+
+- O sistema vai ser **atualizado** (\`apt-get upgrade\`) — pacotes antigos serão substituídos. Em servidores que rodam outros serviços, isso pode reiniciar processos. Em um VPS recém-criado (que é o cenário recomendado), o impacto é zero.
+- O **firewall** (UFW) vai ser ativado liberando apenas SSH (22), HTTP (80) e HTTPS (443). Se você usa outras portas, libere antes ou ajuste depois.
+- O **Docker** vai ser instalado e configurado para iniciar no boot.
+- O **fuso horário** vai ser definido como UTC. Para horário de Brasília, edite o script \`01-setup-vps.sh\` antes de rodar.
+- O **Nginx** vai ser configurado como proxy reverso para \`meuapp.com\` → porta interna 80.
+
+### Propagação de DNS — o passo mais demorado
+
+Configurar o DNS do seu domínio leva **5 minutos a 24 horas** para propagar pela internet. Esse é o único passo que você não controla — depende dos servidores do seu provedor de domínio.
+
+- Na maioria das vezes propaga em 10-30 min.
+- Os scripts e o checklist verificam a propagação automaticamente antes de chamar o Certbot — se ainda não propagou, eles param e pedem para você esperar mais.
+
+### Erros comuns que podem acontecer
+
+- **"Permission denied"** — você não está logado como \`root\`. Use \`sudo\` ou conecte com o usuário correto.
+- **"Connection refused"** — o IP está errado ou o servidor está desligado. Confirme no painel hPanel.
+- **"DNS problem"** no Certbot — o DNS ainda não propagou. Espere 10 min e tente de novo.
+- **App sobe mas não responde** — quase sempre é uma variável faltando no \`.env\`. O script \`04-deploy-app.sh\` avisa quando detecta isso.
+- **"Address already in use"** — outro serviço está na mesma porta. Veja com \`ss -tlnp\`.
+
+Todos esses casos estão na seção **Solução de problemas** no final desse arquivo, com o comando exato para resolver.
+
+> 🛟 **Se você travar em algum passo**  
+> Pare, leia a seção **Solução de problemas** (no fim do arquivo). Quase tudo o que pode dar errado já está documentado lá. Se ainda assim não resolver, o \`06-health-check.sh\` faz um diagnóstico automático e aponta o que está fora do ar.
+
+## Glossário rápido
+
+Se você nunca trabalhou com servidores antes, esses termos vão aparecer várias vezes:
+
+- **VPS** (Virtual Private Server): um computador na nuvem que fica ligado 24/7. Você acessa ele pela internet usando SSH.
+- **SSH** (Secure Shell): a forma de "entrar" no servidor pelo terminal. Você digita comandos e o servidor executa.
+- **Docker**: uma forma de empacotar a sua aplicação em uma "caixa" que roda igual em qualquer servidor — sem se preocupar com instalar Node, dependências, etc.
+- **Docker Compose**: ferramenta que sobe a sua aplicação Docker com um único comando, lendo um arquivo de configuração (\`docker-compose.yml\`).
+- **Nginx**: o "porteiro" do servidor. Recebe as requisições da internet e encaminha para a sua aplicação.
+- **DNS**: o sistema que liga o seu domínio (\`meuapp.com\`) ao IP do servidor (\`123.45.67.89\`).
+- **SSL/HTTPS**: o cadeado verde do navegador. Criptografa a comunicação entre o usuário e o servidor.
+
+## Passo 1 — Preparar o Hostinger VPS
+
+Antes de qualquer coisa, você precisa de um VPS ativo. Plano recomendado: **KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe)**.
+
+### No painel (hPanel)
+
+1. Acesse https://hpanel.hostinger.com e faça login.
+2. No menu lateral, clique em "VPS" e selecione o seu servidor.
+3. Na aba "Visão geral", anote o IP público do servidor — você vai precisar dele.
+4. Na aba "Sistema operacional", confirme que está rodando Ubuntu 22.04 LTS. Se não estiver, use "Reinstalar SO" e escolha Ubuntu 22.04.
+
+> ✅ **O que você precisa ter ao final desse passo**  
+> O **IP público do servidor** anotado (algo como \`123.45.67.89\`) e a confirmação de que o sistema operacional é \`Ubuntu 22.04 LTS\`.
+
+## Passo 2 — Abrir o terminal SSH
+
+O terminal SSH é onde você vai digitar todos os comandos. Pense nele como uma janela direta com o servidor.
+
+1. Opção A (mais fácil, dentro do navegador): no hPanel, abra seu VPS e clique em "Terminal de navegador". Uma janela preta abre — esse é o terminal SSH.
+2. Opção B (terminal local): abra o Terminal (macOS/Linux) ou PowerShell (Windows) e rode: \`ssh root@SEU_IP_AQUI\`. Substitua SEU_IP_AQUI pelo IP da Hostinger.
+3. Na primeira conexão, digite "yes" para confirmar a fingerprint do servidor.
+4. A senha root é definida no hPanel em "Acesso SSH". Se não lembrar, redefina por lá.
+
+Se a conexão funcionou, você verá algo como:
+
+\`\`\`bash
+Welcome to Ubuntu 22.04 LTS
+root@servidor:~#
+\`\`\`
+
+> ⚠️ **A partir daqui, tudo é dentro do servidor**  
+> Todos os próximos comandos são rodados dentro desse terminal SSH (no servidor), **não no seu computador local**.
+
+## Passo 3 — Atualizar o sistema e instalar Docker
+
+O servidor vem com o sistema operacional, mas ainda não tem o Docker. Vamos atualizar tudo e instalar.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/01-setup-vps.sh\` e \`deployment-guide/scripts/02-install-docker.sh\`. No terminal do servidor (SSH), rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/01-setup-vps.sh
+> bash deployment-guide/scripts/02-install-docker.sh
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> Os scripts cobrem 3.1 (update do sistema + firewall básico) e 3.2/3.3/3.4 (Docker + Compose + validação).
+
+### 3.1 Atualizar o sistema
+
+\`\`\`bash
+apt-get update && apt-get upgrade -y
+\`\`\`
+
+_O que esse comando faz:_ baixa a lista de atualizações disponíveis (\`update\`) e instala todas (\`upgrade -y\` aceita automaticamente).
+
+### 3.2 Instalar Docker
+
+\`\`\`bash
+curl -fsSL https://get.docker.com | sh
+\`\`\`
+
+_O que esse comando faz:_ baixa o script oficial do Docker (\`curl\`) e executa (\`| sh\`). Esse é o método recomendado pela própria Docker.
+
+### 3.3 Instalar Docker Compose
+
+\`\`\`bash
+apt-get install -y docker-compose-plugin
+\`\`\`
+
+_O que esse comando faz:_ instala o plugin \`compose\` do Docker, que permite usar o comando \`docker compose up\`.
+
+### 3.4 Verificar instalação
+
+\`\`\`bash
+docker --version
+docker compose version
+\`\`\`
+
+Se aparecer algo como \`Docker version 24.x\` e \`Docker Compose version v2.x\`, está tudo certo.
+
+## Passo 4 — Enviar os arquivos do projeto para o servidor
+
+O \`lovable-migrate\` já gerou todos os arquivos que o servidor precisa em \`output/supabase-project/\` no seu computador. Agora você vai copiá-los para o servidor.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/03-upload-app.sh\`. No terminal do seu computador, rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/03-upload-app.sh SEU_IP_AQUI
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> O script cuida do \`mkdir\` remoto, empacota com \`tar\` e envia via SSH streaming (mais rápido que múltiplos \`scp\`).
+
+### 4.1 Criar o diretório no servidor
+
+Dentro do terminal SSH (no servidor):
+
+\`\`\`bash
+mkdir -p /opt/app
+cd /opt/app
+\`\`\`
+
+_O que esse comando faz:_ cria a pasta \`/opt/app\` (se ainda não existir) e entra nela.
+
+### 4.2 Copiar os arquivos do seu computador para o servidor
+
+Agora abra um **segundo terminal no seu próprio computador** (não no servidor). Vamos usar \`scp\` para enviar os arquivos.
+
+Navegue até a pasta do projeto migrado e rode:
+
+\`\`\`bash
+cd output/supabase-project
+scp -r docker/ .env root@SEU_IP_AQUI:/opt/app/
+\`\`\`
+
+_O que esse comando faz:_ envia a pasta \`docker/\` e o arquivo \`.env\` para o servidor, dentro do caminho remoto. Substitua \`SEU_IP_AQUI\` pelo IP que você anotou no Passo 1.
+
+> ℹ️ **Ainda não tem o arquivo .env?**  
+> Sem problema — vamos criá-lo direto no servidor no próximo passo. Pode pular essa parte do \`scp\` removendo \`.env\` do comando.
+
+## Passo 5 — Configurar as variáveis de ambiente
+
+Variáveis de ambiente são os "segredos" e configurações do projeto: chaves de API, URL do banco, etc. Elas ficam em um arquivo chamado \`.env\`.
+
+
+Esse projeto usa **Supabase**. Você vai precisar dos seguintes valores, que estão no painel do Supabase em **Project Settings → API**:
+
+- \`VITE_SUPABASE_URL\` (ou \`NEXT_PUBLIC_SUPABASE_URL\`) — a URL do seu projeto Supabase
+- \`VITE_SUPABASE_ANON_KEY\` (ou \`NEXT_PUBLIC_SUPABASE_ANON_KEY\`) — a chave pública (anon key)
+
+
+### 5.1 Criar o arquivo \`.env\` no servidor
+
+No terminal SSH (no servidor):
+
+\`\`\`bash
+cd /opt/app
+nano .env
+\`\`\`
+
+_O que esse comando faz:_ abre o editor de texto \`nano\` no arquivo \`.env\`. Para sair: \`Ctrl+X\`, depois \`Y\`, depois \`Enter\`.
+
+### 5.2 Cole o conteúdo abaixo e preencha os valores
+
+\`\`\`bash
+VITE_SUPABASE_ANON_KEY=
+VITE_SUPABASE_URL=
+\`\`\`
+
+> 🔒 **Esses valores são secretos**  
+> Nunca compartilhe esse arquivo em público (GitHub, chat, etc). Ele contém chaves que dão acesso ao seu banco e serviços.
+
+## Passo 6 — Subir a aplicação com Docker Compose
+
+Agora vamos ligar a aplicação. O \`docker-compose.yml\` que o \`lovable-migrate\` gerou já está configurado.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/04-deploy-app.sh\`. No terminal do servidor (SSH), rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/04-deploy-app.sh
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> O script verifica \`.env\`, faz \`docker compose up -d --build\` e mostra status + logs iniciais.
+
+No terminal SSH (no servidor):
+
+\`\`\`bash
+cd /opt/app/docker
+docker compose up -d --build
+\`\`\`
+
+_O que esse comando faz:_
+
+- \`up\`: inicia os containers
+- \`-d\` (detached): roda em segundo plano (você fecha o terminal e continua rodando)
+- \`--build\`: constrói a imagem Docker antes (na primeira vez, demora alguns minutos)
+
+### Verificar se subiu
+
+\`\`\`bash
+docker compose ps
+\`\`\`
+
+Se aparecer um container com status \`running\` (rodando), está no ar. Teste acessando \`http://SEU_IP_AQUI:80\` no navegador — você deve ver a sua aplicação.
+
+> 🐛 **Não abriu? Veja os logs**  
+> Rode \`docker compose logs --tail=100\` para ver as últimas 100 linhas de log. A maioria dos erros aparece ali (variável faltando, porta em uso, etc).
+
+## Passo 7 — Configurar o domínio (DNS)
+
+Vamos fazer com que \`meuapp.com\` aponte para o seu servidor.
+
+### Onde configurar
+
+No painel onde você comprou o domínio (Registro.br, GoDaddy, Hostinger Domains, Namecheap, etc.), procure por **"Gerenciar DNS"** ou **"Zona DNS"**.
+
+### Que registros adicionar
+
+| Tipo | Nome | Valor | TTL |
+|---|---|---|---|
+| A | @ | \`SEU_IP_AQUI\` | 3600 |
+| A | www | \`SEU_IP_AQUI\` | 3600 |
+
+_O que isso significa:_ o registro \`@\` aponta o domínio raiz (\`meuapp.com\`) para o IP. O \`www\` faz o mesmo para \`www.meuapp.com\`.
+
+> ⏱ **O DNS demora para propagar**  
+> Pode levar de 5 minutos a 24 horas para o domínio começar a apontar para o servidor. Para conferir, rode no seu computador: \`ping meuapp.com\` — se aparecer o IP do servidor, está propagado.
+
+### Observações sobre Hostinger VPS
+
+- A Hostinger já abre as portas 22 (SSH), 80 (HTTP) e 443 (HTTPS) por padrão — não precisa configurar firewall externo.
+- Para apontar um domínio, configure os registros DNS no painel onde o domínio foi comprado (Hostinger Domains, Registro.br, GoDaddy, etc.) — adicione um registro A apontando para o IP do VPS.
+- O suporte da Hostinger via chat 24/7 ajuda com problemas de rede e SO — não com a configuração da sua aplicação.
+
+## Passo 8 — Configurar o Nginx (servidor web público)
+
+Hoje, sua aplicação roda na porta \`80\` (acessível por \`http://SEU_IP_AQUI:80\`). Vamos colocar o Nginx na frente para que ela seja servida em \`http://meuapp.com\` (porta 80, padrão da web).
+
+### 8.1 Instalar Nginx
+
+\`\`\`bash
+apt-get install -y nginx
+\`\`\`
+
+### 8.2 Criar arquivo de configuração
+
+\`\`\`bash
+nano /etc/nginx/sites-available/meuapp.com
+\`\`\`
+
+Cole o seguinte conteúdo (substitua \`meuapp.com\` pelo seu domínio):
+
+\`\`\`nginx
+server {
+    listen 80;
+    server_name meuapp.com www.meuapp.com;
+
+    location / {
+        proxy_pass http://localhost:80;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+\`\`\`
+
+_O que essa configuração faz:_ qualquer requisição que chegar em \`meuapp.com\` (porta 80) é encaminhada para a sua aplicação rodando na porta \`80\`.
+
+### 8.3 Ativar a configuração
+
+\`\`\`bash
+ln -s /etc/nginx/sites-available/meuapp.com /etc/nginx/sites-enabled/
+nginx -t
+systemctl reload nginx
+\`\`\`
+
+_O que esses comandos fazem:_
+
+- \`ln -s\`: ativa o arquivo de configuração
+- \`nginx -t\`: testa se a configuração está correta (deve dizer \`syntax is ok\`)
+- \`systemctl reload nginx\`: aplica a nova configuração
+
+Agora teste \`http://meuapp.com\` no navegador — sua aplicação deve aparecer.
+
+## Passo 9 — Configurar HTTPS com SSL gratuito
+
+Vamos adicionar o cadeado verde (\`https://\`). Usamos o Let's Encrypt, que é gratuito e automático.
+
+> 💡 **Atalho via script**  
+> Esse passo já está empacotado em \`deployment-guide/scripts/05-setup-ssl.sh\`. No terminal do servidor (SSH), rode:
+>
+> \`\`\`bash
+> bash deployment-guide/scripts/05-setup-ssl.sh meuapp.com seu-email@exemplo.com
+> \`\`\`
+> Os scripts têm comentários PT-BR explicando linha a linha o que fazem.  
+> O script combina os Passos 8 e 9: instala Nginx + Certbot, cria o virtual host, gera o certificado e testa a renovação automática.
+
+### 9.1 Instalar Certbot
+
+\`\`\`bash
+apt-get install -y certbot python3-certbot-nginx
+\`\`\`
+
+### 9.2 Gerar o certificado
+
+\`\`\`bash
+certbot --nginx -d meuapp.com -d www.meuapp.com --non-interactive --agree-tos --email seu-email@exemplo.com
+\`\`\`
+
+_O que esse comando faz:_ o Certbot pede um certificado SSL para o seu domínio, instala ele no Nginx automaticamente, e configura o redirecionamento de \`http://\` para \`https://\`.
+
+> ⚠️ **O DNS precisa estar propagado**  
+> O Certbot acessa \`meuapp.com\` para confirmar que você é o dono. Se o DNS ainda não propagou (Passo 7), esse comando falha. Espere alguns minutos e tente de novo.
+
+### 9.3 Renovação automática
+
+O certificado dura 90 dias e renova sozinho. Para confirmar:
+
+\`\`\`bash
+systemctl status certbot.timer
+\`\`\`
+
+Se aparecer \`active (running)\`, está tudo certo.
+
+> 🎉 **Pronto!**  
+> Sua aplicação está no ar em \`https://meuapp.com\` com cadeado verde, rodando em Docker, atrás do Nginx, com SSL gratuito que renova sozinho. Você acabou de fazer um deploy de produção profissional.
+
+## Solução de problemas
+
+### O comando \`ssh\` retorna "Connection refused"
+
+Verifique se o IP está correto e se o servidor está ligado no painel hPanel. A porta 22 (SSH) precisa estar liberada — na maioria dos provedores ela já vem aberta por padrão.
+
+### \`docker compose up\` falha com "permission denied"
+
+Você não está logado como \`root\`. Rode \`sudo docker compose up -d --build\` ou conecte SSH com \`root\`.
+
+### A aplicação subiu mas não responde no navegador
+
+Cheque os logs com \`docker compose logs --tail=200\`. Normalmente é uma variável de ambiente faltando no \`.env\` (veja Passo 5).
+
+### \`nginx -t\` retorna erro
+
+Olhe a mensagem — geralmente é uma chave \`}\` faltando no arquivo de configuração. Volte ao Passo 8.2 e revise o conteúdo colado.
+
+### Certbot retorna "DNS problem"
+
+O DNS do seu domínio ainda não propagou. Espere mais alguns minutos e teste com \`ping seu-dominio.com\` no seu computador — ele precisa retornar o IP do servidor.
+
+### Como atualizar a aplicação depois?
+
+Para subir uma nova versão, repita o Passo 4 (enviar arquivos) e o Passo 6 com \`docker compose up -d --build\`. O Docker rebuild só o que mudou — geralmente é rápido.
+
+### Onde aprender mais?
+
+- **Docker** — [docs.docker.com/get-started](https://docs.docker.com/get-started/)
+- **Nginx** — [nginx.org/en/docs/beginners_guide.html](https://nginx.org/en/docs/beginners_guide.html)
+- **Let's Encrypt / Certbot** — [certbot.eff.org](https://certbot.eff.org/)
+
+## Atalhos via script (opcional, mas recomendado)
+
+Todo passo acima também está empacotado como script bash em \`deployment-guide/scripts/\`. Use os scripts depois de ler o guia narrativo — eles servem para acelerar e para você ter um registro reproduzível do deploy.
+
+### Primeiro, libere a execução
+
+Os scripts vêm sem flag de execução. Antes de usá-los pela primeira vez, rode (uma única vez) onde os arquivos estiverem:
+
+\`\`\`bash
+chmod +x deployment-guide/scripts/*.sh
+\`\`\`
+
+### Ordem recomendada de execução
+
+| Script | Onde rodar | Faz | Cobre |
+|---|---|---|---|
+| \`deployment-guide/scripts/01-setup-vps.sh\` | servidor | Update + timezone + UFW | Passo 3 |
+| \`deployment-guide/scripts/02-install-docker.sh\` | servidor | Docker Engine + Compose plugin | Passo 3 |
+| \`deployment-guide/scripts/03-upload-app.sh\` | local | Empacota e envia docker/ + .env via tar|ssh streaming | Passo 4 |
+| \`deployment-guide/scripts/04-deploy-app.sh\` | servidor | docker compose up -d --build + logs | Passo 6 |
+| \`deployment-guide/scripts/05-setup-ssl.sh\` | servidor | Nginx + Certbot + virtual host + renew dry-run | Passos 8 e 9 |
+| \`deployment-guide/scripts/06-health-check.sh\` | servidor | Diagnóstico de Docker, app, Nginx, DNS, HTTPS | Pós-deploy |
+
+> ℹ️ **O script não substitui o guia**  
+> Cada script tem comentários PT-BR explicando linha a linha o que faz. Se algo der errado, abra o \`.sh\` correspondente — geralmente o motivo do erro está no comentário do passo que falhou.
+
+---
+
+### Contexto técnico
+
+- Estratégia de deploy detectada: **static** — site estático (servido por Nginx no container)
+- Confiança da detecção: \`high\`
+- Guia gerado em: <TIMESTAMP>
+
+_Esse guia foi gerado automaticamente pelo \`lovable-migrate\` a partir da análise do seu projeto. Para regenerar com novas configurações, rode novamente com \`--target\`, \`--domain\` ou outras flags._
+"
+`;

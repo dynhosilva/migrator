@@ -8,43 +8,7 @@ import type {
   GeneratedFile,
 } from '../types';
 import { VERSION } from '../../version';
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
-
-/**
- * Diretório (relativo ao outputDir) onde todos os scripts são gerados.
- *
- * Mantido como constante única para que o checklist, o DEPLOY.md, o renderer
- * e o gerador concordem sobre o mesmo caminho. Mudança aqui = mudança automática
- * em todos os consumidores.
- */
-export const SCRIPTS_DIR = 'deployment-guide/scripts';
-
-/**
- * Filenames estáveis indexados por chave semântica.
- *
- * Exportado para que o checklist-generator preencha `scriptRef` sem hardcode
- * de strings — qualquer renomeio de arquivo passa por aqui.
- */
-export const SCRIPT_FILENAMES: Readonly<Record<BashScriptKey, string>> = {
-  'setup-vps':      '01-setup-vps.sh',
-  'install-docker': '02-install-docker.sh',
-  'upload':         '03-upload-app.sh',
-  'deploy':         '04-deploy-app.sh',
-  'ssl':            '05-setup-ssl.sh',
-  'health-check':   '06-health-check.sh',
-} as const;
-
-/**
- * Path relativo (a partir de CHECKLIST.md) usado em `scriptRef`.
- *
- * O CHECKLIST.md vive em `deployment-guide/CHECKLIST.md`; os scripts em
- * `deployment-guide/scripts/`. Logo, do ponto de vista do checklist, o
- * script está em `scripts/XX-name.sh`.
- */
-export function scriptRefFor(key: BashScriptKey): string {
-  return `scripts/${SCRIPT_FILENAMES[key]}`;
-}
+import { SCRIPTS_DIR, SCRIPT_FILENAMES, UNCONFIGURED } from '../constants';
 
 // ─── Helpers de renderização ──────────────────────────────────────────────────
 
@@ -392,6 +356,23 @@ function buildUploadScript(ctx: ProjectContext, config: GuideConfig): BashScript
 function buildDeployScript(ctx: ProjectContext, config: GuideConfig): BashScriptFile {
   const projectName = ctx.analysis?.projectName ?? ctx.meta.name;
 
+  // Lista de variáveis esperadas — vem do plan (preferencial) ou da análise.
+  // Injetamos como array bash literal para que o script possa diagnosticar
+  // .env incompleto antes de subir a app (90% das falhas de "subiu mas não
+  // responde" são variável faltando).
+  const requiredEnvVars =
+    (ctx.plan?.env.required.length ?? 0) > 0
+      ? ctx.plan!.env.required
+      : ctx.analysis?.envVars ?? [];
+
+  const requiredVarsBashArray = requiredEnvVars.length === 0
+    ? 'REQUIRED_VARS=()'
+    : [
+        'REQUIRED_VARS=(',
+        ...requiredEnvVars.map((v) => `  "${v}"`),
+        ')',
+      ].join('\n');
+
   const content = [
     header({
       filename: SCRIPT_FILENAMES['deploy'],
@@ -399,9 +380,10 @@ function buildDeployScript(ctx: ProjectContext, config: GuideConfig): BashScript
       purposeLines: [
         'O que esse script faz:',
         '  1. Verifica que docker/ e .env existem em <REMOTE_PATH>',
-        '  2. Executa "docker compose up -d --build" — sobe os containers em background',
-        '  3. Mostra o status dos containers (docker compose ps)',
-        '  4. Imprime as últimas 30 linhas de log para diagnóstico rápido',
+        `  2. Confere se .env contém as ${requiredEnvVars.length} variável(is) esperadas pelo projeto`,
+        '  3. Executa "docker compose up -d --build" — sobe os containers em background',
+        '  4. Mostra o status dos containers (docker compose ps)',
+        '  5. Imprime as últimas 30 linhas de log para diagnóstico rápido',
       ],
       executionLocation: 'remote',
       prerequisites: [
@@ -416,6 +398,10 @@ function buildDeployScript(ctx: ProjectContext, config: GuideConfig): BashScript
     `REMOTE_PATH="${config.remotePath}"`,
     `APP_PORT="${config.port}"`,
     '',
+    '# Variáveis de ambiente que esse projeto espera (extraídas pelo lovable-migrate).',
+    '# O script verifica abaixo se cada uma está definida em .env antes de subir a app.',
+    requiredVarsBashArray,
+    '',
     '# ─── 0. Verificações ────────────────────────────────────────────────────────',
     'if [[ ! -d "${REMOTE_PATH}/docker" ]]; then',
     '  echo -e "${FAIL} ${REMOTE_PATH}/docker não encontrado."',
@@ -428,6 +414,30 @@ function buildDeployScript(ctx: ProjectContext, config: GuideConfig): BashScript
     '  echo "     A aplicação pode subir, mas variáveis de ambiente vão faltar."',
     '  echo "     Pressione Enter para continuar mesmo assim, ou Ctrl+C para abortar."',
     '  read -r _',
+    'elif [[ ${#REQUIRED_VARS[@]} -gt 0 ]]; then',
+    '  # Confere quais variáveis esperadas não estão definidas no .env.',
+    '  # Aceitamos "VAR=algo" (mesmo com valor vazio) como "definida" — quem',
+    '  # esquece a key inteira é o erro comum; quem deixa o value em branco',
+    '  # geralmente fez de propósito.',
+    '  MISSING=()',
+    '  for var in "${REQUIRED_VARS[@]}"; do',
+    '    if ! grep -q "^${var}=" "${REMOTE_PATH}/.env"; then',
+    '      MISSING+=("${var}")',
+    '    fi',
+    '  done',
+    '',
+    '  if [[ ${#MISSING[@]} -gt 0 ]]; then',
+    '    echo -e "${WARN} As seguintes variáveis estão ausentes em ${REMOTE_PATH}/.env:"',
+    '    for var in "${MISSING[@]}"; do',
+    '      echo "       - ${var}"',
+    '    done',
+    '    echo "     A aplicação provavelmente vai subir mas falhar em runtime."',
+    '    echo "     Edite com: nano ${REMOTE_PATH}/.env  (depois rode esse script de novo)"',
+    '    echo "     Ou pressione Enter para subir assim mesmo, Ctrl+C para corrigir."',
+    '    read -r _',
+    '  else',
+    '    echo -e "${OK} Todas as ${#REQUIRED_VARS[@]} variáveis esperadas estão presentes em .env."',
+    '  fi',
     'fi',
     '',
     '# ─── 1. Build e up ──────────────────────────────────────────────────────────',
@@ -474,10 +484,10 @@ function buildSslScript(ctx: ProjectContext, config: GuideConfig): BashScriptFil
   const projectName = ctx.analysis?.projectName ?? ctx.meta.name;
 
   // Defaults vêm do contexto; usuário pode sobrescrever via argumento.
-  // Se o usuário não passou --domain, usamos placeholder explícito (e o script aborta
-  // pedindo argumento).
-  const domainDefault = config.domain ?? '__NAO_CONFIGURADO__';
-  const emailDefault = config.adminEmail ?? '__NAO_CONFIGURADO__';
+  // Se o usuário não passou --domain, usamos o sentinel UNCONFIGURED — o script
+  // aborta com mensagem útil quando detecta esse valor em runtime.
+  const domainDefault = config.domain ?? UNCONFIGURED;
+  const emailDefault = config.adminEmail ?? UNCONFIGURED;
 
   const content = [
     header({
@@ -513,14 +523,14 @@ function buildSslScript(ctx: ProjectContext, config: GuideConfig): BashScriptFil
     `ADMIN_EMAIL="\${2:-${emailDefault}}"`,
     `APP_PORT="${config.port}"`,
     '',
-    'if [[ "${DOMAIN}" == "__NAO_CONFIGURADO__" ]]; then',
+    `if [[ "\${DOMAIN}" == "${UNCONFIGURED}" ]]; then`,
     '  echo -e "${WARN} Nenhum domínio foi fornecido."',
     '  echo "     Uso: bash $(basename \\"$0\\") <DOMAIN> <ADMIN_EMAIL>"',
     '  echo "     Exemplo: bash $(basename \\"$0\\") meuapp.com admin@meuapp.com"',
     '  exit 1',
     'fi',
     '',
-    'if [[ "${ADMIN_EMAIL}" == "__NAO_CONFIGURADO__" ]]; then',
+    `if [[ "\${ADMIN_EMAIL}" == "${UNCONFIGURED}" ]]; then`,
     '  echo -e "${WARN} Nenhum email foi fornecido."',
     '  echo "     O Certbot precisa de um email válido para notificações de expiração."',
     '  echo "     Uso: bash $(basename \\"$0\\") ${DOMAIN} <ADMIN_EMAIL>"',
@@ -569,7 +579,32 @@ function buildSslScript(ctx: ProjectContext, config: GuideConfig): BashScriptFil
     '',
     'systemctl reload nginx',
     '',
-    '# ─── 3. Certbot ─────────────────────────────────────────────────────────────',
+    '# ─── 3. Pré-check de DNS (evita falha críptica do Certbot) ──────────────────',
+    '# Certbot precisa do DNS já propagado para validar a posse do domínio (HTTP-01).',
+    '# Se chamarmos sem DNS pronto, ele falha com "DNS problem" — mensagem que',
+    '# confunde iniciantes. Vamos comparar dig vs IP público ANTES de chamar.',
+    'echo -e "${INFO} Verificando propagação do DNS..."',
+    'SERVER_IP="$(curl --silent --max-time 5 ifconfig.me 2>/dev/null || true)"',
+    'RESOLVED_IP="$(getent hosts "${DOMAIN}" 2>/dev/null | awk \'{print $1}\' | head -n1 || true)"',
+    '',
+    'if [[ -z "${SERVER_IP}" ]]; then',
+    '  echo -e "${WARN} Não consegui detectar o IP público do servidor (sem internet?)."',
+    '  echo "     Vou seguir mesmo assim — Certbot vai ser mais explícito sobre o problema."',
+    'elif [[ -z "${RESOLVED_IP}" ]]; then',
+    '  echo -e "${FAIL} O domínio ${DOMAIN} ainda não resolve para nenhum IP."',
+    '  echo "     → Provavelmente o DNS não propagou ainda. Espere 5-30 min e tente de novo."',
+    '  echo "     → Confira no painel do seu provedor de domínio se o registro A está apontando para ${SERVER_IP}."',
+    '  exit 1',
+    'elif [[ "${RESOLVED_IP}" != "${SERVER_IP}" ]]; then',
+    '  echo -e "${FAIL} O domínio ${DOMAIN} aponta para ${RESOLVED_IP}, mas este servidor é ${SERVER_IP}."',
+    '  echo "     → Os registros DNS estão errados. Atualize o A record para ${SERVER_IP}."',
+    '  echo "     → Depois espere a propagação (5-30 min) e rode esse script de novo."',
+    '  exit 1',
+    'else',
+    '  echo -e "${OK} DNS confirmado: ${DOMAIN} → ${SERVER_IP}"',
+    'fi',
+    '',
+    '# ─── 4. Certbot ─────────────────────────────────────────────────────────────',
     '# Certbot é o cliente oficial do Let\'s Encrypt (gratuito).',
     '# A flag --nginx faz a validação via HTTP-01 e atualiza o arquivo do Nginx',
     '# automaticamente, adicionando o bloco listen 443 ssl e o redirect http→https.',
@@ -585,7 +620,7 @@ function buildSslScript(ctx: ProjectContext, config: GuideConfig): BashScriptFil
     '  --email "${ADMIN_EMAIL}" \\',
     '  --redirect',
     '',
-    '# ─── 4. Renovação automática (dry-run) ──────────────────────────────────────',
+    '# ─── 5. Renovação automática (dry-run) ──────────────────────────────────────',
     '# Certificados Let\'s Encrypt duram 90 dias. O Certbot cria um timer systemd',
     '# que tenta renovar automaticamente — aqui só validamos que o caminho funciona.',
     'echo -e "${INFO} Testando renovação automática (dry-run)..."',
@@ -612,7 +647,7 @@ function buildSslScript(ctx: ProjectContext, config: GuideConfig): BashScriptFil
 
 function buildHealthCheckScript(ctx: ProjectContext, config: GuideConfig): BashScriptFile {
   const projectName = ctx.analysis?.projectName ?? ctx.meta.name;
-  const domainDefault = config.domain ?? '__NAO_CONFIGURADO__';
+  const domainDefault = config.domain ?? UNCONFIGURED;
 
   const content = [
     header({
@@ -679,7 +714,7 @@ function buildHealthCheckScript(ctx: ProjectContext, config: GuideConfig): BashS
     'fi',
     '',
     '# ─── 4. HTTPS / Domínio (se configurado) ────────────────────────────────────',
-    'if [[ "${DOMAIN}" != "__NAO_CONFIGURADO__" ]]; then',
+    `if [[ "\${DOMAIN}" != "${UNCONFIGURED}" ]]; then`,
     '  RESOLVED_IP="$(getent hosts \\"${DOMAIN}\\" 2>/dev/null | awk \'{print $1}\' | head -n1 || true)"',
     '  SERVER_IP="$(curl --silent --max-time 3 ifconfig.me 2>/dev/null || echo \'\')"',
     '  if [[ -n "${RESOLVED_IP}" && -n "${SERVER_IP}" && "${RESOLVED_IP}" == "${SERVER_IP}" ]]; then',

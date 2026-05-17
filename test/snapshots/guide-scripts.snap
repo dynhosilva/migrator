@@ -184,7 +184,32 @@ nginx -t
 
 systemctl reload nginx
 
-# ─── 3. Certbot ─────────────────────────────────────────────────────────────
+# ─── 3. Pré-check de DNS (evita falha críptica do Certbot) ──────────────────
+# Certbot precisa do DNS já propagado para validar a posse do domínio (HTTP-01).
+# Se chamarmos sem DNS pronto, ele falha com "DNS problem" — mensagem que
+# confunde iniciantes. Vamos comparar dig vs IP público ANTES de chamar.
+echo -e "\${INFO} Verificando propagação do DNS..."
+SERVER_IP="$(curl --silent --max-time 5 ifconfig.me 2>/dev/null || true)"
+RESOLVED_IP="$(getent hosts "\${DOMAIN}" 2>/dev/null | awk '{print $1}' | head -n1 || true)"
+
+if [[ -z "\${SERVER_IP}" ]]; then
+  echo -e "\${WARN} Não consegui detectar o IP público do servidor (sem internet?)."
+  echo "     Vou seguir mesmo assim — Certbot vai ser mais explícito sobre o problema."
+elif [[ -z "\${RESOLVED_IP}" ]]; then
+  echo -e "\${FAIL} O domínio \${DOMAIN} ainda não resolve para nenhum IP."
+  echo "     → Provavelmente o DNS não propagou ainda. Espere 5-30 min e tente de novo."
+  echo "     → Confira no painel do seu provedor de domínio se o registro A está apontando para \${SERVER_IP}."
+  exit 1
+elif [[ "\${RESOLVED_IP}" != "\${SERVER_IP}" ]]; then
+  echo -e "\${FAIL} O domínio \${DOMAIN} aponta para \${RESOLVED_IP}, mas este servidor é \${SERVER_IP}."
+  echo "     → Os registros DNS estão errados. Atualize o A record para \${SERVER_IP}."
+  echo "     → Depois espere a propagação (5-30 min) e rode esse script de novo."
+  exit 1
+else
+  echo -e "\${OK} DNS confirmado: \${DOMAIN} → \${SERVER_IP}"
+fi
+
+# ─── 4. Certbot ─────────────────────────────────────────────────────────────
 # Certbot é o cliente oficial do Let's Encrypt (gratuito).
 # A flag --nginx faz a validação via HTTP-01 e atualiza o arquivo do Nginx
 # automaticamente, adicionando o bloco listen 443 ssl e o redirect http→https.
@@ -200,7 +225,7 @@ certbot --nginx /
   --email "\${ADMIN_EMAIL}" /
   --redirect
 
-# ─── 4. Renovação automática (dry-run) ──────────────────────────────────────
+# ─── 5. Renovação automática (dry-run) ──────────────────────────────────────
 # Certificados Let's Encrypt duram 90 dias. O Certbot cria um timer systemd
 # que tenta renovar automaticamente — aqui só validamos que o caminho funciona.
 echo -e "\${INFO} Testando renovação automática (dry-run)..."

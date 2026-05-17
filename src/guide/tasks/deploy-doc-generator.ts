@@ -3,7 +3,7 @@ import type { GuideConfig, DeployDocArtifact, GeneratedFile } from '../types';
 import type { GuideTargetProfile } from '../types';
 import type { AnalysisReport } from '../../analyzer/types';
 import type { MigrationPlan, DeployTarget } from '../../planner/types';
-import { SCRIPTS_DIR, SCRIPT_FILENAMES } from './script-generator';
+import { SCRIPTS_DIR, SCRIPT_FILENAMES } from '../constants';
 
 // ─── Constantes de apresentação ───────────────────────────────────────────────
 
@@ -131,7 +131,60 @@ function buildOverview(): string {
     callout(
       '🚀',
       'Atalho disponível',
-      `Cada um desses passos também está empacotado como script bash em \`${SCRIPTS_DIR}/\`. Você pode ler o guia uma vez para entender, e nas próximas usar os scripts para acelerar — veja a seção **Atalhos via script** antes do troubleshooting.`,
+      `Cada um desses passos também está empacotado como script bash em \`${SCRIPTS_DIR}/\`. Você pode ler o guia uma vez para entender, e nas próximas usar os scripts para acelerar — veja a seção **Atalhos via script** ao final do documento.`,
+    ),
+    '',
+  ].join('\n');
+}
+
+function buildExpectations(config: GuideConfig): string {
+  const profile = config.profile;
+  const hasDomain = config.domain !== null;
+
+  return [
+    '## O que esperar',
+    '',
+    'Antes de começar, é útil saber o que vai acontecer no servidor — para você não se assustar quando coisas mudarem.',
+    '',
+    '### Tempo realista',
+    '',
+    '- **30-45 min** se você já fez deploy uma vez e tudo der certo',
+    '- **1-2 horas** na primeira vez, com algumas paradas para entender o que cada comando faz',
+    '- **2-4 horas** se algo der errado e você precisar consultar o troubleshooting',
+    '',
+    'Não há problema em demorar — não é uma corrida. Cada passo tem o tempo estimado ao lado.',
+    '',
+    '### O que vai mudar no servidor',
+    '',
+    `- O sistema vai ser **atualizado** (\`apt-get upgrade\`) — pacotes antigos serão substituídos. Em servidores que rodam outros serviços, isso pode reiniciar processos. Em um VPS recém-criado (que é o cenário recomendado), o impacto é zero.`,
+    '- O **firewall** (UFW) vai ser ativado liberando apenas SSH (22), HTTP (80) e HTTPS (443). Se você usa outras portas, libere antes ou ajuste depois.',
+    '- O **Docker** vai ser instalado e configurado para iniciar no boot.',
+    `- O **fuso horário** vai ser definido como UTC. Para horário de Brasília, edite o script \`01-setup-vps.sh\` antes de rodar.`,
+    hasDomain
+      ? `- O **Nginx** vai ser configurado como proxy reverso para \`${config.domain}\` → porta interna ${config.port}.`
+      : '- (Sem domínio configurado) O Nginx não será instalado nesta passada.',
+    '',
+    '### Propagação de DNS — o passo mais demorado',
+    '',
+    'Configurar o DNS do seu domínio leva **5 minutos a 24 horas** para propagar pela internet. Esse é o único passo que você não controla — depende dos servidores do seu provedor de domínio.',
+    '',
+    '- Na maioria das vezes propaga em 10-30 min.',
+    '- Os scripts e o checklist verificam a propagação automaticamente antes de chamar o Certbot — se ainda não propagou, eles param e pedem para você esperar mais.',
+    '',
+    '### Erros comuns que podem acontecer',
+    '',
+    '- **"Permission denied"** — você não está logado como `root`. Use `sudo` ou conecte com o usuário correto.',
+    `- **"Connection refused"** — o IP está errado ou o servidor está desligado. Confirme no painel ${profile.panelName}.`,
+    '- **"DNS problem"** no Certbot — o DNS ainda não propagou. Espere 10 min e tente de novo.',
+    '- **App sobe mas não responde** — quase sempre é uma variável faltando no `.env`. O script `04-deploy-app.sh` avisa quando detecta isso.',
+    '- **"Address already in use"** — outro serviço está na mesma porta. Veja com `ss -tlnp`.',
+    '',
+    'Todos esses casos estão na seção **Solução de problemas** no final desse arquivo, com o comando exato para resolver.',
+    '',
+    callout(
+      '🛟',
+      'Se você travar em algum passo',
+      'Pare, leia a seção **Solução de problemas** (no fim do arquivo). Quase tudo o que pode dar errado já está documentado lá. Se ainda assim não resolver, o `06-health-check.sh` faz um diagnóstico automático e aponta o que está fora do ar.',
     ),
     '',
   ].join('\n');
@@ -633,6 +686,7 @@ export function generateDeployDoc(
   const sections = [
     buildHeader(ctx, config),
     buildOverview(),
+    buildExpectations(config),
     buildGlossary(),
     buildStep1Vps(config),
     buildStep2Ssh(config),
@@ -643,8 +697,11 @@ export function generateDeployDoc(
     buildStep7Domain(config),
     buildStep8Nginx(config),
     buildStep9Ssl(config),
-    buildScriptShortcuts(),
+    // Troubleshooting vem ANTES de "Atalhos via script" — iniciante que travou
+    // precisa achar a solução antes de pensar em atalho. Atalhos é seção avançada,
+    // adequada como última leitura.
     buildTroubleshooting(config.profile),
+    buildScriptShortcuts(),
     buildFooter(plan, generatedAt),
   ];
 

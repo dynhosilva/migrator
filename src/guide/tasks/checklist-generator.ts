@@ -6,7 +6,7 @@ import type {
   ChecklistItem,
   GeneratedFile,
 } from '../types';
-import { scriptRefFor } from './script-generator';
+import { scriptRefFor } from '../constants';
 
 // ─── Constantes de apresentação ───────────────────────────────────────────────
 
